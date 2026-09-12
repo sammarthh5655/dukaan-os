@@ -13,6 +13,8 @@ Two unrelated shops and owner/cashier/removed users cannot read or mutate each o
 
 ## Verification work
 
+Exercise the real provider-backed sign-up, verification, sign-in/out, session renewal and reset forms using disposable accounts and a local mail sink. Reject invalid/expired/reused links and removed users; preserve the offline book on failure or linking cancellation. Separately test authorization through direct API calls. A mocked success screen is not evidence of provider integration. See [authentication integration scope](../AUTH-INTEGRATION.md).
+
 1. Review the final diff, schema changes, migrations, untracked/generated/configuration files and feature flags against the card.
 2. Run relevant existing regressions and targeted negative/failure cases. Current baseline commands are `npm test`, `npm run build` and `npm run plan:check`; add/document real-browser or backend commands where this build requires them.
 3. Test the changed feature through normal UI/API entry points and at the authorization/transaction boundary. Include restart, cancellation, duplicate submission, malformed input and applicable migration cases.

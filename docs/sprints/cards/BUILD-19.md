@@ -18,6 +18,8 @@ Cloud data must have a trusted identity boundary before any synchronization writ
 
 Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side.
 
+Author-requested integration includes provider-backed email/password sign-up, verification, sign-in/out, session expiry/renewal and password reset, wired to application forms against a local/emulated provider. Use a local mail sink and explicit local-shop linking; do not upload the existing book automatically or trust local roles as server membership. See [authentication integration scope](../AUTH-INTEGRATION.md). Split this slice before implementation if it exceeds the existing size limit.
+
 Likely touch points (current files or proposed modules, not an instruction to create all of them blindly): `new backend migrations/API`; `auth adapter`; `policy tests`.
 
 Out of scope: Creating paid/live resources or uploading local customer records.
@@ -25,6 +27,8 @@ Out of scope: Creating paid/live resources or uploading local customer records.
 ## Acceptance contract
 
 Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data.
+
+Actual browser sign-up/verification/sign-in/reset journeys succeed against the local provider; duplicate accounts, invalid/expired/reused links, removed users and stale sessions fail safely. No reset email is sent to a real person during tests. Existing offline books survive linking cancellation and authentication failure.
 
 Commit success must remain durable, permissions must be checked at the action boundary, and all affected existing bug/security regressions must remain passing. Builder tests should use independently derived expected results.
 

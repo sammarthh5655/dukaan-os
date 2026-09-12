@@ -1,0 +1,15 @@
+# Cash shifts and closing policy
+
+Owners open one till shift per store with a physical opening count and an IANA timezone (default Asia/Kolkata). The first opening activates cash tracking for the whole local book: subsequent cash transactions in every store require that store to have an open shift. Historical cash sources become an explicit baseline and are not added to the new opening float. Other stores can open independently. The timezone is fixed after the first shift; changing it requires a future migration.
+
+Cash sales, collections/advances, initial purchase payments, supplier payments, customer refunds and supplier refunds are attributed to the open shift in the same durable save as the business record. UPI/card transactions do not move cash. Expense and owner-withdrawal entries record cash already taken out; their reasons and notes are retained. Nothing initiates a real payment or purchase.
+
+Expected cash equals opening float plus signed cash movements. Closing records physical counted cash, expected cash, counted-minus-expected variance and the exact movement list. A negative expected value is shown rather than hidden. Closing does not silently reopen a shift, and the next opening remains an explicit physical count rather than an automatic carry-forward.
+
+The business date follows the store timezone, including across midnight. Late-entered cash facts post now to the currently open shift; their original source timestamp remains available in CSV. Closed shifts retain their original expected/count/movement records. Reversing an expense appends its opposite cash movement in the current shift. Correcting a closing-count transcription appends a linked count amendment without changing cash, the original close or an already-open later shift. The reported count and original count are both exported.
+
+The cash dashboard exports every movement and every closing; on-screen movement detail shows the latest 50. Cash day totals are movement totals, excluding opening float, and show their business date. The existing general sales date filters still use the browser's local day until the unified reconciliation work in BUILD-12; these are distinct date conventions, not interchangeable till balances.
+
+Example: 500 opening + 100 cash sale + 50 collection - 80 purchase - 20 supplier payment - 100 refund - 30 expense - 40 withdrawal = 380 expected. A physical count of 375 records -5 variance. A later shift opened with 375, a 100 refund and a 30 expense reversal expects 305; the previous close remains 380 expected and 375 originally counted.
+
+The optional cashVersion marker and five cash collections travel through encrypted checkpoint backups and journal replay. Older strict clients refuse the new root fields. Git rewind does not undo a data upgrade. App-level preservation and validation are not cryptographic protection against a person rewriting browser storage. Independent review, physical device qualification and real-data migration activation remain outstanding.

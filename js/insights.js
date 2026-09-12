@@ -399,7 +399,7 @@
 
       '<div class="sec-title"> ' + t('dash.recent') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
-      '<th>#</th><th>' + t('pos.customer') + '</th><th>Items</th><th>Mode</th><th class="r">' + t('com.total') + '</th><th class="r">When</th><th></th></tr></thead><tbody>' +
+      '<th>#</th><th>' + t('pos.customer') + window.App.moneyLiteral('</th><th>Items</th><th>Mode</th><th class="r">') + t('com.total') + '</th><th class="r">When</th><th></th></tr></thead><tbody>' +
       (App.bills().slice(0, 10).map((b) => '<tr' + (b.void ? ' style="opacity:.45"' : '') + '>' +
         '<td class="num">' + b.no + '</td>' +
         '<td><b>' + esc(b.customerName) + '</b></td>' +
@@ -453,7 +453,7 @@
       '<div class="spacer"></div>' +
       '<div class="btn-row">' +
       [7, 14, 30, 90].map((n) => '<button class="chip tap ' + (repRange === n ? 'sel' : '') + '" data-rr="' + n + '">' + n + 'd</button>').join('') +
-      '<button class="btn sm" id="repCsv"> ' + t('rep.exportCsv') + '</button></div></div>' +
+      '<button class="btn sm" id="repCsv"> ' + t('rep.exportCsv') + window.App.moneyLiteral('</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div><p class="muted">This overview uses browser-local dates and excludes voided bills. Use Statements for store business dates and dated corrections.</p>') +
 
       '<div class="ai-card" style="margin-bottom:18px">' +
       '<div class="ai-h"> ' + t('rep.ask') + '</div>' +
@@ -466,7 +466,7 @@
         .map((s) => '<button class="chip tap" data-ask="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div></div>' +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
-      '<div class="stat accent"><span class="em"></span><div class="k">Net ' + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
+      window.App.moneyLiteral('<div class="stat accent"><span class="em"></span><div class="k">Net ') + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
       '<div class="stat"><span class="em"></span><div class="k">' + t('rep.profit') + '</div><div class="v">' + money(R.profit) + '</div>' +
       '<div class="d up">' + (R.sales ? Math.round(R.profit / R.sales * 100) : 0) + '% margin</div></div>' +
       '<div class="stat"><span class="em"></span><div class="k">Avg bill</div><div class="v">' + money(R.avg) + '</div><div class="d muted">' + R.items + ' units</div></div>' +
@@ -486,16 +486,17 @@
         '<b class="num">' + money(modes[k]) + '</b></div>').join('') : '<p class="muted" style="font-size:13px">No bills yet</p>') +
       '</div></div></div>' +
 
-      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('rep.cash') + '</div>' +
-      '<div class="kv"><span>Bills paid in cash</span><b class="num">' + money(cash.billCash, true) + '</b></div>' +
-      '<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
-      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out-cash.refundCash, true) + '</b></div>' +
-      '<div class="kv"><span>Cash refunds paid</span><b class="num">− '+money(cash.refundCash,true)+'</b></div>' +
-      '<div class="kv"><span>Supplier cash refunds received</span><b class="num">'+money(cash.supplierRefundCash,true)+'</b></div>' +
-      '<div class="kv" style="font-size:16px"><b>' + t('rep.expected') + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
-      '<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + (cash.businessDate?'Cash movements · '+cash.businessDate:t('rep.cash')) + '</div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Bills paid in cash</span><b class="num">') + money(cash.billCash, true) + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">') + money(cash.payCash, true) + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ') + money(cash.supplierOut ?? cash.out-cash.refundCash, true) + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Cash refunds paid</span><b class="num">− ')+money(cash.refundCash,true)+'</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Supplier cash refunds received</span><b class="num">')+money(cash.supplierRefundCash,true)+'</b></div>' +
+      (cash.manualNet!==undefined?window.App.moneyLiteral('<div class="kv"><span>Expenses, withdrawals and linked corrections</span><b class="num">')+money(cash.manualNet,true)+'</b></div>':'')+
+      '<div class="kv" style="font-size:16px"><b>' + (cash.businessDate?window.App.moneyLiteral('Net cash movements (excluding opening float)'):t('rep.expected')) + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
+      (cash.businessDate?window.App.moneyLiteral('<p>Use Cash shifts to review opening float, counted cash and closing variance.</p>'):'<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
       '<button class="btn pri" id="reconcile" style="flex:0 0 auto">' + t('com.confirm') + '</button></div>' +
-      '<div id="reconOut" style="margin-top:10px"></div></div></div>' +
+      '<div id="reconOut" style="margin-top:10px"></div>')+'</div></div>' +
 
       (st.gstEnabled ?
         '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0"> ' + t('rep.gst') + ' · ' + repRange + 'd</div>' +
@@ -534,6 +535,7 @@
 
     main.addEventListener('click', async (e) => {
       const rr = e.target.closest('[data-rr]'), qa = e.target.closest('[data-ask]');
+      if(e.target.closest('#cashShifts'))return App.cashDashboard();if(e.target.closest('#statements'))return App.reconciliationDashboard();
       if (rr) { repRange = +rr.dataset.rr; return App.render(); }
       if (qa) { App.$('#askQ').value = qa.dataset.ask; return runAsk(qa.dataset.ask); }
       if (e.target.closest('#askGo')) return runAsk(App.$('#askQ').value);
@@ -565,7 +567,7 @@
         return;
       }
       if (e.target.closest('#repCsv')) {
-        const rows = [['Bill', 'Date', 'Customer', 'Items', 'Subtotal', 'Discount', 'GST', 'Total', 'Mode', 'Credit', 'Staff']];
+        const rows = [['Bill', window.App.moneyLiteral('Date'), window.App.moneyLiteral('Customer'), window.App.moneyLiteral('Items'), 'Subtotal', 'Discount', 'GST', 'Total', 'Mode', window.App.moneyLiteral('Credit'), 'Staff']];
         R.bills.forEach((b) => rows.push([b.no, App.fmtDT(b.at), b.customerName,
         b.lines.map((l) => l.name + '×' + l.qty).join('; '), b.sub, b.discount, b.tax, b.total, b.mode,
         b.credit ? 'Yes' : 'No', (App.staff(b.staffId) || {}).name || '']));

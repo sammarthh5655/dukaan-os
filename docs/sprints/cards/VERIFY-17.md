@@ -1,6 +1,6 @@
 # VERIFY-17 — Verify one tested printer transport
 
-Status: **planned**. Build under review: [BUILD-17](BUILD-17.md).
+Status: **blocked**. Build under review: [BUILD-17](BUILD-17.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

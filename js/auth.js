@@ -18,10 +18,10 @@
   const attemptKey = (kind) => 'dukaanos.attempts.' + kind;
   function attemptState(kind) {
     try { const s = JSON.parse(localStorage.getItem(attemptKey(kind)) || '{}'); return { count: Number(s.count) || 0, until: Number(s.until) || 0 }; }
-    catch (e) { throw new Error('Authentication state is unreadable.'); }
+    catch (e) { throw new Error(App.uiText('Authentication state is unreadable.')); }
   }
   function checkAttempt(kind) {
-    if (attemptState(kind).until > Date.now()) throw new Error('Too many attempts. Wait before trying again.');
+    if (attemptState(kind).until > Date.now()) throw new Error(App.uiText('Too many attempts. Wait before trying again.'));
   }
   function failedAttempt(kind) {
     const s = attemptState(kind); s.count++;
@@ -37,14 +37,14 @@
     App.setLocked(false); grantFresh();
   }
   function newPassword(password) {
-    if (typeof password !== 'string' || password.length < 12 || password.length > 256) throw new Error('Use a password of 12 to 256 characters.');
+    if (typeof password !== 'string' || password.length < 12 || password.length > 256) throw new Error(App.uiText('Use a password of 12 to 256 characters.'));
   }
   async function checkPassword(acc, password) {
     checkAttempt('password');
     // Older releases permitted long passwords; retain those while bounding verification input.
-    if (typeof password !== 'string' || password.length > 4096) throw new Error('Password is too long.');
+    if (typeof password !== 'string' || password.length > 4096) throw new Error(App.uiText('Password is too long.'));
     const check = await derive(password, acc ? acc.salt : '00'.repeat(16), acc ? (acc.iterations || LEGACY_ITER) : ITER);
-    if (!acc || check.hash !== acc.hash) { failedAttempt('password'); throw new Error('Incorrect username or password'); }
+    if (!acc || check.hash !== acc.hash) { failedAttempt('password'); throw new Error(App.uiText('Incorrect username or password')); }
     passedAttempt('password');
   }
 
@@ -58,12 +58,12 @@
         (a.iterations != null && ![LEGACY_ITER, ITER].includes(a.iterations)))) throw new Error('Invalid account');
       return list;
     }
-    catch (e) { throw new Error('Account data is unreadable. Preserve storage and restore a backup.'); }
+    catch (e) { throw new Error(App.uiText('Account data is unreadable. Preserve storage and restore a backup.')); }
   }
   function saveAccounts(list) {
     App.assertWriter();
     try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list)); }
-    catch (e) { console.error('Could not save accounts', e); throw new Error('Storage is full or unavailable'); }
+    catch (e) { console.error('Could not save accounts', e); throw new Error(App.uiText('Storage is full or unavailable')); }
   }
 
   function bytesToHex(bytes) { return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join(''); }
@@ -74,7 +74,7 @@
   }
 
   async function derive(password, saltHex, iterations = ITER) {
-    if (!w.crypto || !w.crypto.subtle) throw new Error('This browser cannot run secure login — please update it');
+    if (!w.crypto || !w.crypto.subtle) throw new Error(App.uiText('This browser cannot run secure login — please update it'));
     const enc = new TextEncoder();
     const salt = saltHex ? hexToBytes(saltHex) : w.crypto.getRandomValues(new Uint8Array(16));
     const keyMaterial = await w.crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
@@ -92,7 +92,7 @@
     accounts: loadAccounts,
     checkPin(pin, expected) {
       checkAttempt('pin');
-      if (!expected || String(pin) !== expected) { failedAttempt('pin'); throw new Error('Incorrect PIN'); }
+      if (!expected || String(pin) !== expected) { failedAttempt('pin'); throw new Error(App.uiText('Incorrect PIN')); }
       passedAttempt('pin');
     },
     requireFresh() {
@@ -105,7 +105,7 @@
       const context = App.context(), acc = this.currentAccount(), me = App.me();
       const expected = me.pin || App.DB().settings.pin;
       if (this.gateOn()) {
-        if (!acc) throw new Error('Sign in first.');
+        if (!acc) throw new Error(App.uiText('Sign in first.'));
         const password = await App.prompt('Verify owner', 'Enter your account password', { type: 'password' });
         if (password == null) return false;
         await checkPassword(acc, password);
@@ -130,7 +130,7 @@
        suddenly staring at an empty till. */
     async enableGate(accountId) {
       App.assertWriter();
-      if (!this.currentAccount() || this.currentAccount().id !== accountId) throw new Error('Sign in first.');
+      if (!this.currentAccount() || this.currentAccount().id !== accountId) throw new Error(App.uiText('Sign in first.'));
       const context = App.context();
       const local = await App.storage.read('dukaanos.v2.local');
       App.assertContext(context);
@@ -187,20 +187,20 @@
     async signUp({ username, password, confirm, shopName }) {
       username = normUser(username);
       shopName = String(shopName || '').trim();
-      if (username.length > 64 || username.length < 3) throw new Error('Username must be at least 3 characters');
-      if (!/^[a-zA-Z0-9_.]+$/.test(username)) throw new Error('Username can only use letters, numbers, "." and "_"');
-      if (!shopName || shopName.length > 256) throw new Error('Enter your shop name');
+      if (username.length > 64 || username.length < 3) throw new Error(App.uiText('Username must be at least 3 characters'));
+      if (!/^[a-zA-Z0-9_.]+$/.test(username)) throw new Error(App.uiText('Username can only use letters, numbers, "." and "_"'));
+      if (!shopName || shopName.length > 256) throw new Error(App.uiText('Enter your shop name'));
       password = String(password || '');
       newPassword(password);
-      if (password !== confirm) throw new Error('Passwords do not match');
+      if (password !== confirm) throw new Error(App.uiText('Passwords do not match'));
 
       const accounts = loadAccounts();
-      if (accounts.length >= 1000) throw new Error('This browser has reached its account limit.');
-      if (findAccount(accounts, username)) throw new Error('That username is already taken');
+      if (accounts.length >= 1000) throw new Error(App.uiText('This browser has reached its account limit.'));
+      if (findAccount(accounts, username)) throw new Error(App.uiText('That username is already taken'));
 
       const context = App.context();
       const { hash, salt } = await derive(password);
-      if (!App.contextValid(context)) throw new Error('The counter changed. Try again.');
+      if (!App.contextValid(context)) throw new Error(App.uiText('The counter changed. Try again.'));
       const acc = {
         id: App.uid('ac'), username, shopName, hash, salt, iterations: ITER,
         createdAt: Date.now(), lastLoginAt: Date.now()
@@ -218,7 +218,7 @@
       const acc = findAccount(accounts, username);
       await checkPassword(acc, String(password || ''));
       if (!acc.iterations || acc.iterations < ITER) { Object.assign(acc, await derive(String(password))); acc.iterations = ITER; }
-      if (!App.contextValid(context)) throw new Error('The counter changed. Try again.');
+      if (!App.contextValid(context)) throw new Error(App.uiText('The counter changed. Try again.'));
       acc.lastLoginAt = Date.now();
       saveAccounts(accounts);
       signedIn(acc);
@@ -238,10 +238,10 @@
       const context = App.context();
       const accounts = loadAccounts();
       const acc = accounts.find((a) => a.id === accountId);
-      if (!acc) throw new Error('Account not found');
+      if (!acc) throw new Error(App.uiText('Account not found'));
       await checkPassword(acc, String(oldPassword || ''));
       const nextPassword = String(newPassword || '');
-      if (nextPassword.length < 12 || nextPassword.length > 256) throw new Error('Use a password of 12 to 256 characters.');
+      if (nextPassword.length < 12 || nextPassword.length > 256) throw new Error(App.uiText('Use a password of 12 to 256 characters.'));
       const fresh = await derive(newPassword);
       App.assertContext(context);
       acc.hash = fresh.hash; acc.salt = fresh.salt; acc.iterations = ITER;
@@ -257,7 +257,7 @@
       const context = App.context();
       const accounts = loadAccounts();
       const acc = accounts.find((a) => a.id === accountId);
-      if (!acc) throw new Error('Account not found');
+      if (!acc) throw new Error(App.uiText('Account not found'));
       await checkPassword(acc, String(password || ''));
       App.assertContext(context);
       (await App.wipeAccountData(accountId));

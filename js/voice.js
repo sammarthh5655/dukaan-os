@@ -180,7 +180,7 @@
   /* ───────── parse a whole utterance ───────── */
   function parse(transcript, items) {
     items = items || App.items();
-    const clean = String(transcript || '').replace(/[।!?]+/g, ' ').replace(/(?<!\d)\.|\.(?!\d)/g, ' ').trim();
+    const clean = String(transcript || '').replace(/[०-९]/g,c=>String(c.charCodeAt(0)-0x966)).replace(/(\d)(?=[a-zA-Z\u0900-\u097f])/g,'$1 ').replace(/[,;+]/g,' and ').replace(/[।!?]+/g, ' ').replace(/(?<!\d)\.|\.(?!\d)/g, ' ').trim();
     if (!clean) return { lines: [], unknown: [] };
 
     const chunks = clean.split(SEPS).map((s) => s.trim()).filter(Boolean);
@@ -188,7 +188,9 @@
 
     chunks.forEach((chunk) => {
       let toks = chunk.toLowerCase().split(/\s+/).filter(Boolean);
-      let qty = null;
+      let qty = null,spokenUnit=null,invalid=false;
+      const unitWords={kg:'kg',kilo:'kg',kilogram:'kg',किलो:'kg',g:'g',gm:'g',gram:'g',grams:'g',ग्राम:'g',l:'l',litre:'l',liter:'l',लीटर:'l',ml:'ml',एमएल:'ml',piece:'piece',pieces:'piece',pcs:'piece',pc:'piece',पीस:'piece',packet:'pack',packets:'pack',pack:'pack',packs:'pack',pkt:'pack',पैकेट:'pack'};
+      if(/(?:^|\s)-\d/.test(chunk)||toks.includes('peace')){unknown.push(chunk);return;}
 
       /* quantity: digits or number words, anywhere but usually first.
          \p{M} must stay in the class — Devanagari vowel matras are combining
@@ -196,23 +198,25 @@
       for (let i = 0; i < toks.length; i++) {
         const t = toks[i].replace(/[^\p{L}\p{N}\p{M}.]/gu, '');
         if (/^\d+(\.\d+)?$/.test(t)) {
-          // a bare number that looks like a pack size (500, 250) is part of the name
           const n = parseFloat(t);
-          if (n <= 99 && qty == null) { qty = n; toks.splice(i, 1); i--; continue; }
-        } else if (NUM[t] != null && qty == null) {
-          qty = NUM[t]; toks.splice(i, 1); i--; continue;
+          if(qty!==null){invalid=true;break;}qty=n;toks.splice(i,1);i--;continue;
+        } else if (NUM[t] != null) {
+          if(qty!==null){invalid=true;break;}qty = NUM[t]; toks.splice(i, 1); i--; continue;
         }
       }
+      toks=toks.filter(t=>{const unit=unitWords[t];if(!unit)return true;if(spokenUnit)invalid=true;spokenUnit=unit;return false;});
+      if(invalid||(spokenUnit&&qty===null)){unknown.push(chunk);return;}
       /* strip packaging words */
       toks = toks.filter((t) => UNITS.indexOf(t.replace(/[^\p{L}\p{N}\p{M}]/gu, '')) < 0);
       const phrase = toks.join(' ').trim();
-      if (!phrase) return;
+      if (!phrase) {unknown.push(chunk);return;}
 
       const hit = matchItem(phrase, items);
       if (hit) {
+        let converted;try{converted=App.units.convert(hit.item,qty===null?1:qty,spokenUnit);}catch{unknown.push(chunk);return;}
         const ex = lines.find((l) => l.item.id === hit.item.id);
-        if (ex) ex.qty += (qty == null ? 1 : qty);
-        else lines.push({ item: hit.item, qty: qty == null ? 1 : qty, said: chunk, score: hit.score });
+        if (ex) {ex.qty=App.domain.quantity(ex.qty+converted);ex.said+='; '+chunk;}
+        else lines.push({item:hit.item,qty:converted,said:chunk,score:hit.score,inferredQuantity:qty===null,spokenUnit,selectionVersion:App.selectionVersion(hit.item)});
       } else unknown.push(chunk);
     });
 
@@ -278,6 +282,9 @@
 
     /* pick whichever alternative resolves to the most known items */
     bestOf(alts, items) {
+      const candidates=(alts||[]).filter(Boolean).map(a=>({...parse(a,items),raw:a}));
+      const signature=r=>JSON.stringify([r.lines.map(l=>[l.item.id,l.qty]).sort(),r.unknown]);
+      if(candidates.length>1&&candidates.some(r=>signature(r)!==signature(candidates[0])))return {lines:[],unknown:[...new Set(alts)],raw:alts[0],ambiguous:true};
       let best = { lines: [], unknown: [], raw: '' };
       (alts || []).forEach((a) => {
         const r = parse(a, items);

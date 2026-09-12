@@ -1,6 +1,6 @@
 # VERIFY-13 — Verify hindi and accessible core navigation
 
-Status: **planned**. Build under review: [BUILD-13](BUILD-13.md).
+Status: **passed**. Build under review: [BUILD-13](BUILD-13.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
@@ -12,6 +12,8 @@ Feature acceptance to demonstrate:
 Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable.
 
 ## Verification work
+
+Use the real sign-up form in the browser, including confirmation/duplicate-name errors and preservation of an existing shop; then sign out and sign in through the UI. Verify that local-only account wording and lack of online password recovery are explicit. API fixture sign-up does not satisfy this case. See [authentication integration scope](../AUTH-INTEGRATION.md).
 
 1. Review the final diff, schema changes, migrations, untracked/generated/configuration files and feature flags against the card.
 2. Run relevant existing regressions and targeted negative/failure cases. Current baseline commands are `npm test`, `npm run build` and `npm run plan:check`; add/document real-browser or backend commands where this build requires them.

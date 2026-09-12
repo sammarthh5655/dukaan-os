@@ -215,6 +215,8 @@
   App.setLang = async function (l) {
     App.DB().settings.lang = l === 'hi' ? 'hi' : 'en';
     (await App.save({ sync: false }));
+    // This optional logged-out preference must not turn a durable settings save into a reported failure.
+    try{localStorage.setItem('dukaanos.uiLanguage',App.DB().settings.lang);}catch{}
     document.documentElement.lang = App.DB().settings.lang;
   };
   /* item display name follows the UI language when a Hindi name exists */

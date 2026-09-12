@@ -1,6 +1,6 @@
 # VERIFY-14 — Verify hindi and accessibility for money and recovery
 
-Status: **planned**. Build under review: [BUILD-14](BUILD-14.md).
+Status: **passed**. Build under review: [BUILD-14](BUILD-14.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

@@ -28,7 +28,7 @@ test('B16: birthday, briefing and CSV icon HTML are rendered as text',async()=>{
 });
 
 test('B18–B19: decimal quantity, unknown tokens, ambiguous variants and Hindi examples',async()=>{
-  const {A}=await create();const sugar=item(A,{name:'Sugar 1kg (loose)'}),lays=item(A,{name:'Lays Magic Masala'}),maggi=item(A,{name:'Maggi 2-Min Noodles'});
+  const {A}=await create();const sugar=item(A,{name:'Sugar 1kg (loose)',unit:'kg'}),lays=item(A,{name:'Lays Magic Masala'}),maggi=item(A,{name:'Maggi 2-Min Noodles'});
   assert.equal(A.parseSpeech('1.5 kilo sugar',[sugar]).lines[0].qty,1.5);
   assert.equal(A.parseSpeech('one magic unicorn',[lays]).lines.length,0);
   assert.equal(A.parseSpeech('one magic unicorn',[lays]).unknown.length,1);

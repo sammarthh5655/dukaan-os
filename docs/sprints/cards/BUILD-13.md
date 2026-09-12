@@ -1,6 +1,6 @@
 # BUILD-13 — Hindi and accessible core navigation
 
-Status: **planned**. Track: Shop floor.
+Status: **passed**. Track: Shop floor.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why
@@ -17,6 +17,8 @@ The primary counter should work without essential English labels or pointer-only
 ## Build scope
 
 Complete shell, login, lock, catalogue and checkout messages in English/Hindi; associate labels; provide modal focus handling, keyboard navigation, announcements and large-touch controls.
+
+Author-requested account work: clearly label the existing device-local sign-up/login, preserve anonymous offline use, and test the actual sign-up form (not just an API-created fixture), confirmation/duplicate-name errors, existing-shop retention and subsequent sign-in/out. See [authentication integration scope](../AUTH-INTEGRATION.md). Online provider identity is BUILD-19.
 
 Likely touch points (current files or proposed modules, not an instruction to create all of them blindly): `js/i18n.js`; `js/app.js`; `js/ui.js`; `js/pos.js`; `css/app.css`.
 

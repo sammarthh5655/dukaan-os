@@ -39,7 +39,7 @@
     const it = App.item(itemId);
     if (!it) return;
     qty = qty || 1;
-    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
+    App.number(qty, 'Quantity', 0.0001); App.units.assertQuantity(it,qty);
     const have = App.sellableStock(it);
     const inCart = (cart.lines.find((l) => l.itemId === itemId) || {}).qty || 0;
     if (have <= 0) { App.toast('err', App.itemName(it), t('pos.outOfStock')); return; }
@@ -50,7 +50,7 @@
     }
     const ex = cart.lines.find((l) => l.itemId === itemId);
     if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
-    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,selectionVersion:App.selectionVersion(it) });
+    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,unitLabel:it.quantitySpec?App.units.label(it):'',selectionVersion:App.selectionVersion(it) });
     if (fromEl) App.flyTo(fromEl, '#cartCount', it.emoji || '🛒');
     App.buzz();
     paintCart(); App.bump('#cartCount');return draftSave;
@@ -62,6 +62,7 @@
     App.domain.quantityUnits(q);
     const l = cart.lines.find((x) => x.itemId === itemId); if (!l) return;
     const it = App.item(itemId);
+    if(it&&q>0)App.units.assertQuantity(it,q);
     const max = it ? App.sellableStock(it) : 999;
     if (q > max) { q = max; App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: max })); }
     if (q <= 0) {
@@ -106,18 +107,21 @@
     box.innerHTML = list.length ? list.map(itemCard).join('')
       : App.emptyState('', t('pos.noItems'), t('pos.quickHint'),
         App.can('edit_inventory') ? '<button class="btn pri sm" id="quickAdd">' + t('pos.addQuick') + '</button>' : '');
+    App.enhanceAccessibility(box);
   }
 
   /* ───────── cart panel ───────── */
   function paintCart(persist=true) {
     const box = App.$('#cartLines'); if (!box) return;
+    const focused=document.activeElement,focusControl=focused?.closest?.('#cartLines button,#cartFoot button');
+    const focusMatch=focusControl?{id:focusControl.id,inc:focusControl.dataset.inc,dec:focusControl.dataset.dec,mode:focusControl.dataset.mode}:null;
     const T = totals();
     const cust = cart.customerId ? App.customer(cart.customerId) : null;
 
     box.innerHTML = cart.lines.length ? cart.lines.map((l) =>
       '<div class="cart-line" data-line="' + l.itemId + '">' +
       App.mark(l.name) +
-      '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty + '</span></span>' +
+      '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty +' '+esc(l.unitLabel||'')+ '</span></span>' +
       '<span class="qty"><button data-dec="' + l.itemId + '">−</button><b>' + l.qty + '</b><button data-inc="' + l.itemId + '">+</button></span>' +
       '<span class="cl-amt">' + money(l.price * l.qty) + '</span></div>').join('')
       : '<div class="empty" style="padding:26px 16px"><div class="e"></div><h4>' + t('pos.empty') + '</h4><p>' + t('pos.emptySub') + '</p></div>';
@@ -148,12 +152,15 @@
       (cart.mode === 'credit' ? '' + t('pos.credit') : '✓ ' + t('pos.charge')) + ' · ' + money(T.total) + '</button></div>';
 
     const mob = App.$('#cartPanel');
+    App.enhanceAccessibility(box);App.enhanceAccessibility(f);
+    if(focusMatch){const target=[...box.querySelectorAll('button'),...f.querySelectorAll('button')].find(b=>(focusMatch.id&&b.id===focusMatch.id)||(focusMatch.inc&&b.dataset.inc===focusMatch.inc)||(focusMatch.dec&&b.dataset.dec===focusMatch.dec)||(focusMatch.mode&&b.dataset.mode===focusMatch.mode));(target||App.$('#pickCust')).focus();}
+    const grand=f.querySelector('.grand');if(grand){grand.setAttribute('role','status');grand.setAttribute('aria-label',App.uiText('Cart total {amount}',{amount:money(T.total,true)}));}
     if (mob && cart.lines.length && w.innerWidth <= 860) mob.classList.add('open');
     if(persist){
       const context=App.context();
       draftSave=App.drafts.save(cart).then(saved=>{if(App.contextValid(context)){cart.draftId=saved?.id || '';draftError=null;}}).catch(error=>{
         draftError=error;
-        App.toast('err','Cart could not be saved',error.message);
+        App.toast('err',App.uiText('Cart could not be saved'),error.message);
         if(App.contextValid(context)){loadedScope='';loadDraft();paintCart(false);}
       });
     }
@@ -221,7 +228,7 @@
       t('pos.doneSub', { amt: money(bill.total, true), mode: bill.credit ? t('pos.credit') : t('pos.' + bill.mode) }),
       { label: t('com.undo'), fn: async () => { (await App.actions.voidBill(bill.id, 'undo')); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
 
-    await App.checkTarget().catch(() => App.toast('warn', 'Sale saved', 'The daily target preference could not be saved.'));
+    await App.checkTarget().catch(() => App.toast('warn', App.uiText('Sale saved'), App.uiText('The daily target preference could not be saved.')));
     showReceipt(bill);
   }
 
@@ -231,18 +238,17 @@
     const cust = bill.customerPhone!==undefined?{phone:bill.customerPhone}:(bill.customerId ? App.customer(bill.customerId) : null);
     const wrap = App.el('<div><div class="receipt-prev" id="rcp"></div></div>');
     const cv = App.receiptCanvas(bill);
+    cv.setAttribute('aria-hidden','true');const receiptText=document.createElement('pre');receiptText.className='sr-only';receiptText.textContent=App.billText(bill);wrap.appendChild(receiptText);
     wrap.querySelector('#rcp').appendChild(cv);
 
     App.modal({
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
-        /* Returns need the per-line batch/tax allocations that only bills made
-           after the ledger upgrade carry; older bills can't be returned, so
-           don't offer a button that can only fail. */
-        App.can('void_bill')&&!bill.void&&App.returnable(bill)?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
-        { label: 'PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
-        { label: '' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
+        App.can('void_bill')&&!bill.void&&App.returnable(bill)?{label:App.uiText('Return / refunds'),cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
+        {label:App.uiText('58 mm receipt preview'),cls:'ghost',keepOpen:true,fn:()=>App.thermal.preview(bill.id)},
+        { label: ' PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
+        { label: ' ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {
           label: '' + t('pos.share'), cls: 'ok', keepOpen: true,
           fn: () => shareBill(bill, cust)
@@ -272,7 +278,7 @@
   App.shareBill = shareBill;
 
   function printBill(bill) {
-    const st = App.DB().settings;
+    const st = bill.receiptSettings || {shopName:'Shop'};
     let h = '<div style="text-align:center;font-family:sans-serif">' +
       '<h2 style="margin:0">' + esc(st.shopName) + '</h2>' +
       (st.address ? '<div style="font-size:11px">' + esc(st.address) + '</div>' : '') +
@@ -283,7 +289,7 @@
       '<div style="font-size:12px;font-weight:700;margin:4px 0">' + esc(bill.customerName) + ' · ' + esc(String(bill.mode).toUpperCase()) + '</div><hr>' +
       '<table style="width:100%;font-size:11px;border-collapse:collapse">' +
       '<tr><th align="left">Item</th><th>Qty</th><th align="right">Rate</th><th align="right">Amt</th></tr>' +
-      bill.lines.map((l) => '<tr><td>' + esc(l.name) + '</td><td align="center">' + l.qty + '</td><td align="right">' + l.price + '</td><td align="right">' + l.gross.toFixed(2) + '</td></tr>').join('') +
+      bill.lines.map((l) => '<tr><td>' + esc(l.name) + (l.quantitySpec?'<br>'+esc(App.units.label(l)):'') + '</td><td align="center">' + l.qty + '</td><td align="right">' + l.price + '</td><td align="right">' + l.gross.toFixed(2) + '</td></tr>').join('') +
       '</table><hr>' +
       '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Subtotal</span><span>' + bill.sub.toFixed(2) + '</span></div>' +
       (bill.discount ? '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Discount</span><span>-' + bill.discount.toFixed(2) + '</span></div>' : '') +
@@ -315,7 +321,7 @@
         orb.hidden = true;
         if (!final) return;
         const res = App.voice.bestOf([final].concat(alts || []), App.items());
-        const use = res.lines.length ? res : App.parseSpeech(final, App.items());
+        const use = res.ambiguous?res:res.lines.length ? res : App.parseSpeech(final, App.items());
         confirmVoice(final, use);
       }
     });
@@ -337,7 +343,7 @@
     const paint = () => {
       App.$('#vlist', body).innerHTML = res.lines.map((l, i) =>
         '<div class="list-row">' + App.mark(l.item) +
-        '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty + '</small></span>' +
+        '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty +' '+esc(App.units.label(l.item))+'<br>'+esc(l.said)+'</small></span>' +
         '<span class="qty"><button data-vd="' + i + '">−</button><b>' + l.qty + '</b><button data-vi="' + i + '">+</button></span>' +
         '<b class="num" style="width:62px;text-align:right">' + money(l.item.price * l.qty) + '</b></div>').join('');
     };
@@ -352,7 +358,7 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
-        fn: async () => { for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
+        fn: async () => {loadDraft();for(const l of res.lines){const it=App.item(l.item.id);if(!it||l.selectionVersion!==App.selectionVersion(it)||App.domain.quantity(l.qty+(cart.lines.find(x=>x.itemId===it.id)?.qty||0))>App.sellableStock(it))throw Error('Voice selection changed. Review the item, unit and stock again.');App.units.assertQuantity(it,l.qty);}for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
       }]
     });
   }
@@ -365,7 +371,7 @@
       .then((code) => { if (code && App.contextValid(context)) onCode(code.trim()); });
 
     if (!('BarcodeDetector' in w)) {
-      App.toast('warn', 'Camera scanner needs Chrome on Android', 'Type the barcode instead');
+      App.toast('warn', App.uiText('Camera scanner needs Chrome on Android'), App.uiText('Type the barcode instead'));
       return manual();
     }
     let stream;
@@ -373,7 +379,7 @@
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch (e) {
       if (!App.contextValid(context)) return;
-      App.toast('err', 'Camera blocked', 'Allow camera access, or type the code');
+      App.toast('err', App.uiText('Camera blocked'), App.uiText('Allow camera access, or type the code'));
       return manual();
     }
     if (!App.contextValid(context)) { stream.getTracks().forEach(tr => tr.stop()); return; }
@@ -384,8 +390,8 @@
     video.srcObject = stream;
     let stop = false;
     const m = App.modal({
-      title: '' + t('pos.scan'), body,
-      buttons: [{ label: 'Type it instead', cls: 'ghost', fn: () => { stop = true; manual(); } }],
+      title: ' ' + t('pos.scan'), body,
+      buttons: [{ label: App.uiText('Type it instead'), cls: 'ghost', fn: () => { stop = true; manual(); } }],
       onClose: () => { stop = true; stream.getTracks().forEach((tr) => tr.stop()); }
     });
     let det;
@@ -447,7 +453,7 @@
       '</div>' +
 
       '<div class="cart" id="cartPanel">' +
-      '<div class="cart-head" id="cartHead"><span style="font-size:18px"></span><h3>' + t('pos.cart') + '</h3>' +
+      '<div class="cart-head" id="cartHead" role="button" tabindex="0" aria-controls="cartLines cartFoot"><span style="font-size:18px"></span><h3>' + t('pos.cart') + '</h3>' +
       '<span class="cart-count" id="cartCount">0</span></div>' +
       '<div class="cart-lines" id="cartLines"></div>' +
       '<div class="cart-foot" id="cartFoot"></div>' +
@@ -504,6 +510,7 @@
       if (inc) setQty(inc.dataset.inc, (cart.lines.find((l) => l.itemId === inc.dataset.inc) || {}).qty + 1);
     });
 
+    App.$('#cartHead').addEventListener('keydown', e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();App.$('#cartHead').click();}});
     App.$('#cartHead').addEventListener('click', () => {
       if (w.innerWidth <= 860) App.$('#cartPanel').classList.toggle('open');
     });

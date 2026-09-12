@@ -1,6 +1,6 @@
 # BUILD-12 — Statements and reconciliation reports
 
-Status: **planned**. Track: Local workflows.
+Status: **passed**. Track: Local workflows.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

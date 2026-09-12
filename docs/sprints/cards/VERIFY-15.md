@@ -1,6 +1,6 @@
 # VERIFY-15 — Verify quantity units and safer noisy-shop voice
 
-Status: **planned**. Build under review: [BUILD-15](BUILD-15.md).
+Status: **passed**. Build under review: [BUILD-15](BUILD-15.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

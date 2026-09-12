@@ -19,12 +19,13 @@
   /* ───────── routing ───────── */
   App.go = function (v) {
     if (!App.views[v]) v = 'dashboard';
-    if (!booted || App.isLocked() || App.isSaving()) return;
+    if (!booted || App.isLocked() || App.isSaving() || App.hasOpenModal()) return;
     if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(v)) v = 'billing';
     view = v;
     location.hash = '#' + v;
     App.render();
     $('#main').scrollTop = 0;
+    $('#main').setAttribute('tabindex','-1');$('#main').focus();
     w.scrollTo({ top: 0, behavior: 'smooth' });
     $('#sidenav').classList.remove('open');
     $('#scrim').classList.remove('on');
@@ -35,6 +36,8 @@
     if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(view)) { view = 'billing'; location.hash = '#billing'; }
     const old = $('#main');
     if (!old) return;
+    const focus=App.captureFocus();
+    needsRender=false;
     /* Swap in a brand-new <main> instead of just clearing innerHTML. Each
        view binds its own delegated click handler to this node, and those
        listeners would otherwise pile up on every navigation — two visits to
@@ -54,12 +57,15 @@
     $$('.nav-item').forEach((n) => n.classList.toggle('on', n.dataset.view === view));
     $$('.tab').forEach((n) => n.classList.toggle('on', n.dataset.view === view));
     paintChrome();
+    App.enhanceAccessibility(document);
+    App.restoreFocus(focus);
   };
 
   function paintChrome() {
     const db = App.DB(), st = db.settings;
     const me = App.me() || {};
     $('#btnLang').textContent = App.lang() === 'hi' ? 'हिं' : 'EN';
+    for(const [id,label] of Object.entries({btnLang:'Language',btnTheme:'Theme',btnMenu:'Menu',btnLock:'Lock'}))$('#'+id).setAttribute('aria-label',App.uiText(label));
     $('#whoPill').textContent = String(me.name || '?').slice(0, 2).toUpperCase();
     $('#whoPill').title = me.name + ' · ' + t('set.' + me.role);
     const sp = $('#storePill');
@@ -68,7 +74,7 @@
     $('#btnLock').hidden = !st.pinOn;
     const acc = App.auth.currentAccount();
     $('#btnLogout').hidden = !acc;               /* nothing to log out of while auth is off */
-    $('#btnLogout').title = acc ? 'Log out (@' + acc.username + ')' : 'Log out';
+    $('#btnLogout').title = App.uiText('Log out')+(acc?' (@'+acc.username+')':'');
     $$('.nav-item, .tab').forEach(n => { n.hidden = !App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(n.dataset.view); });
     const h = App.stats.health();
     const hm = $('#healthMini');
@@ -87,17 +93,20 @@
     const span = pill.querySelector('span');
     pill.classList.toggle('off', !on);
     pill.classList.toggle('sync', on && q > 0);
-    span.textContent = on ? 'Saved on this device · online' : 'Saved on this device · offline';
-    pill.title = 'Cloud sync is not available. Export backups from Settings.';
+    span.textContent = on ? App.uiText('Saved on this device · online') : App.uiText('Saved on this device · offline');
+    pill.title = App.uiText('Cloud sync is not available. Export backups from Settings.');
   }
   App.on('net', paintNet);
+  let savingFocus=null;
   App.on('saving', busy => {
-    $('#shell').inert = busy || App.isLocked();
+    if(busy)savingFocus=App.captureFocus();
+    $('#shell').inert = busy || App.isLocked() || !!App.hasOpenModal?.();
     $('#modalRoot').inert = busy;
     $('#shell').setAttribute('aria-busy', String(busy));
     const status = $('#netPill span');
-    if (busy && status) status.textContent = 'Saving on this device…';
+    if (busy && status) status.textContent = App.uiText('Saving on this device…');
     else if (booted && !App.isLocked()) paintNet();
+    if(!busy){if(!document.activeElement||document.activeElement===document.body)App.restoreFocus(savingFocus);savingFocus=null;}
   });
 
   let wasOffline = !navigator.onLine;
@@ -133,6 +142,7 @@
   let pinBuf = '', onUnlock = null, pinBusy = false;
   function paintPin() {
     $('#pinDots').innerHTML = [0, 1, 2, 3].map((i) => '<i class="' + (i < pinBuf.length ? 'f' : '') + '"></i>').join('');
+    $('#pinDots').setAttribute('aria-label',App.uiText('{n} of 4 PIN digits entered',{n:pinBuf.length}));
   }
   App.lock = async function (after) {
     const st = App.DB().settings;
@@ -151,6 +161,7 @@
     paintPin();
     $('#lockScreen').hidden = false;
     $('#shell').hidden = true;
+    App.enhanceAccessibility($('#lockScreen'));$('#pinPad [data-k="del"]').setAttribute('aria-label',App.uiText('Delete last digit'));$('#pinPad button').focus();
   };
   function pinPress(k) {
     if (pinBusy || !App.isLocked()) return;
@@ -210,7 +221,7 @@
   $('#whoPill').onclick = () => App.switchStaff();
   $('#storePill').onclick = () => App.storePicker();
   $('#btnLogout').onclick = () => {
-    App.confirm('Log out?', 'Your data stays saved on this device — log back in any time with your username and password.')
+    App.confirm(App.uiText('Log out?'), App.uiText('Your data stays saved on this device — log back in any time with your username and password.'))
       .then(async (ok) => { if (ok) (await doLogout()); });
   };
   async function doLogout() {
@@ -249,7 +260,7 @@
 
   /* keyboard shortcuts for a desktop counter */
   document.addEventListener('keydown', (e) => {
-    if (!booted || !$('#lockScreen').hidden) return;
+    if (!booted || !$('#lockScreen').hidden || App.hasOpenModal()) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName);
     if (e.altKey && /^[1-7]$/.test(e.key)) {
       e.preventDefault();
@@ -271,20 +282,23 @@
   let authMode = 'login';
   function setAuthMode(mode) {
     authMode = mode === 'signup' ? 'signup' : 'login';
-    $$('#authTabs .auth-tab').forEach((b) => b.classList.toggle('on', b.dataset.mode === authMode));
+    $$('#authTabs .auth-tab').forEach((b) => {b.classList.toggle('on', b.dataset.mode === authMode);b.setAttribute('aria-pressed',String(b.dataset.mode===authMode));});
     $('#fShop').hidden = authMode !== 'signup';
     $('#fConfirm').hidden = authMode !== 'signup';
-    $('#authSub').textContent = authMode === 'signup' ? 'Create your shop’s account' : 'Sign in to open your counter';
-    $('#authSubmit').textContent = authMode === 'signup' ? 'Create account' : 'Log in';
+    $('#authSub').textContent = authMode === 'signup' ? App.uiText('Create your shop’s account') : App.uiText('Sign in to open your counter');
+    $('#authSubmit').textContent = authMode === 'signup' ? App.uiText('Create account') : App.uiText('Log in');
     $('#authErr').textContent = '';
     $('#authSwitch').innerHTML = authMode === 'signup'
-      ? 'Already have an account? <button type="button" id="authToggle">Log in</button>'
-      : 'New here? <button type="button" id="authToggle">Create an account</button>';
+      ? App.uiText('Already have an account?')+' <button type="button" id="authToggle">'+App.uiText('Log in')+'</button>'
+      : App.uiText('New here?')+' <button type="button" id="authToggle">'+App.uiText('Create an account')+'</button>';
+    $('#a_pass').autocomplete=authMode==='signup'?'new-password':'current-password';
+    App.enhanceAccessibility($('#authScreen'));document.documentElement.lang=App.lang();
     const tog = $('#authToggle'); if (tog) tog.onclick = () => setAuthMode(authMode === 'signup' ? 'login' : 'signup');
     const first = authMode === 'signup' ? $('#a_shop') : $('#a_user');
     if (first && w.innerWidth > 860) setTimeout(() => first.focus(), 60);
   }
   $$('#authTabs .auth-tab').forEach((b) => b.addEventListener('click', () => setAuthMode(b.dataset.mode)));
+  $('#authLang').onclick=()=>{localStorage.setItem('dukaanos.uiLanguage',App.lang()==='hi'?'en':'hi');setAuthMode(authMode);};
 
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -292,7 +306,7 @@
     errEl.textContent = '';
     btn.disabled = true;
     const prevLabel = btn.textContent;
-    btn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+    btn.textContent = authMode === 'signup' ? App.uiText('Creating…') : App.uiText('Signing in…');
     try {
       let acc;
       if (authMode === 'signup') {
@@ -300,16 +314,17 @@
           username: $('#a_user').value, password: $('#a_pass').value,
           confirm: $('#a_pass2').value, shopName: $('#a_shop').value
         });
-        App.toast('ok', 'Account created', 'Welcome to Dukaan OS, ' + acc.shopName + '!');
+        App.toast('ok', App.uiText('Account created'), 'Welcome to Dukaan OS, ' + acc.shopName + '!');
       } else {
         acc = await App.auth.logIn({ username: $('#a_user').value, password: $('#a_pass').value });
-        App.toast('ok', 'Welcome back', acc.shopName);
+        App.toast('ok', App.uiText('Welcome back'), acc.shopName);
       }
       (await enterShell(acc.id));
       $('#authScreen').hidden = true;
       $('#a_pass').value = ''; $('#a_pass2').value = '';
     } catch (err) {
-      errEl.textContent = err.message || 'Something went wrong';
+      errEl.textContent = err.message || App.uiText('Something went wrong');
+      errEl.focus();
       btn.disabled = false;
       btn.textContent = prevLabel;
     }
@@ -319,6 +334,7 @@
   async function enterShell(accountId) {
     (await App.boot(accountId));
     App.setLocked(false);
+    const language=localStorage.getItem('dukaanos.uiLanguage');if((language==='en'||language==='hi')&&App.DB().settings.lang!==language){App.DB().settings.lang=language;await App.save({sync:false,render:false});}
     $('#shell').inert = false;
     App.applyTheme();
     document.documentElement.lang = App.lang();

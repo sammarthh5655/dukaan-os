@@ -1,6 +1,6 @@
 # VERIFY-18 — Verify local pilot and recovery release kit
 
-Status: **planned**. Build under review: [BUILD-18](BUILD-18.md).
+Status: **blocked**. Build under review: [BUILD-18](BUILD-18.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

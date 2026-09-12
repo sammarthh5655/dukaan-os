@@ -1,6 +1,6 @@
 # BUILD-18 — Local pilot and recovery release kit
 
-Status: **planned**. Track: Shop floor.
+Status: **blocked**. Track: Shop floor.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

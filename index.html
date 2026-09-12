@@ -17,30 +17,32 @@
   <div class="auth-card">
     <div class="wordmark">Dukaan<span>OS</span></div>
     <p class="muted" id="authSub">Sign in to open your counter</p>
+    <p class="muted" data-core-text="This account works only in this browser. Online sign-in and password recovery are not available yet.">This account works only in this browser. Online sign-in and password recovery are not available yet.</p>
+    <button type="button" class="btn sm" id="authLang" aria-label="Language / भाषा">हिन्दी / English</button>
 
     <div class="auth-tabs" id="authTabs">
-      <button type="button" class="auth-tab on" data-mode="login">Log in</button>
-      <button type="button" class="auth-tab" data-mode="signup">Sign up</button>
+      <button type="button" class="auth-tab on" data-mode="login" data-core-text="Log in">Log in</button>
+      <button type="button" class="auth-tab" data-mode="signup" data-core-text="Sign up">Sign up</button>
     </div>
 
     <form id="authForm" class="auth-form" autocomplete="on">
       <div class="field" id="fShop" hidden>
-        <label>Shop name</label>
+        <label for="a_shop" data-core-text="Shop name">Shop name</label>
         <input class="inp" id="a_shop" placeholder="Sharma General Store" autocomplete="organization">
       </div>
       <div class="field">
-        <label>Username</label>
+        <label for="a_user" data-core-text="Username">Username</label>
         <input class="inp" id="a_user" placeholder="raj123" autocomplete="username" autocapitalize="off" spellcheck="false">
       </div>
       <div class="field">
-        <label>Password</label>
+        <label for="a_pass" data-core-text="Password">Password</label>
         <input class="inp" id="a_pass" type="password" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div class="field" id="fConfirm" hidden>
-        <label>Confirm password</label>
+        <label for="a_pass2" data-core-text="Confirm password">Confirm password</label>
         <input class="inp" id="a_pass2" type="password" placeholder="••••••••" autocomplete="new-password">
       </div>
-      <p class="auth-err" id="authErr"></p>
+      <p class="auth-err" id="authErr" role="alert" tabindex="-1"></p>
       <button type="submit" class="btn pri big block" id="authSubmit">Log in</button>
     </form>
     <p class="muted auth-switch" id="authSwitch"></p>
@@ -53,7 +55,7 @@
     <div class="wordmark">Dukaan<span>OS</span></div>
     <h2 id="lockTitle">Dukaan OS</h2>
     <p id="lockSub" class="muted"></p>
-    <div class="pin-dots" id="pinDots"></div>
+    <div class="pin-dots" id="pinDots" role="status" aria-live="polite"></div>
     <div class="pin-pad" id="pinPad"></div>
     <p class="pin-err" id="pinErr"></p>
   </div>
@@ -130,7 +132,9 @@
 <script src="js/core.js"></script>
 <script src="js/safety.js"></script>
 <script src="js/migrations.js"></script>
-<script src="js/i18n.js"></script>
+<script src="js/i18n.js"></script><script src="js/core-accessibility.js"></script>
+<script src="js/money-language.js"></script>
+<script src="js/quantity-units.js"></script>
 <script src="js/qr.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/auth.js"></script>
@@ -139,7 +143,9 @@
 <script src="js/supplier-corrections.js"></script>
   <script src="js/stock-adjustments.js"></script>
   <script src="js/stores-transfers.js"></script>
+  <script src="js/cash-shifts.js"></script><script src="js/statements.js"></script>
 <script src="js/voice.js"></script>
+<script src="js/thermal-receipts.js"></script>
 <script src="js/pos.js"></script>
 <script src="js/inventory.js"></script>
 <script src="js/ledger.js"></script>

@@ -13,6 +13,7 @@
     App.$$('.swipe', root).forEach((card) => {
       const fg = card.querySelector('.swipe-fg');
       const id = card.dataset.cid;
+      const context=App.context();
       let x0 = 0, dx = 0, drag = false, pid = null;
       const TH = Math.min(120, card.offsetWidth * 0.32);
 
@@ -42,7 +43,7 @@
         fg.style.transform = '';
         delete fg.dataset.armed;
         try { fg.releasePointerCapture(pid); } catch (err) { }
-        if (fired) {
+        if (fired && App.contextValid(context)) {
           if (dir > 0) settle(id); else (await remind(id));
         }
         dx = 0;
@@ -50,8 +51,9 @@
       fg.addEventListener('pointerdown', down);
       fg.addEventListener('pointermove', move);
       fg.addEventListener('pointerup', up);
-      fg.addEventListener('pointercancel', up);
-      fg.addEventListener('lostpointercapture', up);
+      const cancel=()=>{drag=false;dx=0;fg.style.transform='';fg.classList.remove('dragging');delete fg.dataset.armed;};
+      fg.addEventListener('pointercancel', cancel);
+      fg.addEventListener('lostpointercapture', cancel);
     });
   }
 
@@ -65,22 +67,22 @@
       const done = (c.balance || 0) <= 0.5;
       App.toast('ok', t('cus.received', { name: c.name, amt: money(amt, true) }), done ? t('cus.paidFull', { name: c.name }) : money(c.balance) + ' ' + t('com.pending').toLowerCase());
       App.render();
-    }, { extra:'<div class="field"><label for="collectionMode">Payment method</label><select class="inp" id="collectionMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div><div class="field"><label for="collectionBill">Apply to bill (optional)</label><select class="inp" id="collectionBill"><option value="">Customer balance</option>'+bills.map(b=>'<option value="'+b.id+'">Bill #'+b.no+'</option>').join('')+'</select></div>',sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
+    }, { extra:window.App.moneyLiteral('<div class="field"><label for="collectionMode">Payment method</label><select class="inp" id="collectionMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div><div class="field"><label for="collectionBill">Apply to bill (optional)</label><select class="inp" id="collectionBill"><option value="">Customer balance</option>')+bills.map(b=>'<option value="'+b.id+'">Bill #'+b.no+'</option>').join('')+'</select></div>',sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
   }
   App.settleCustomer = settle;
   App.customerEntryDialog = function(id,kind){
     const c=App.customer(id);if(!c)return;
     const operationId=App.uid('customer_entry');
-    const body=App.el('<div><p>'+esc(c.name)+' · '+esc(money(c.balance,true))+'</p><div class="field"><label for="entryAmount">'+(kind==='advance'?'Amount received':'Signed amount: positive debt, negative credit')+'</label><input class="inp" id="entryAmount" type="number" step="0.01" autofocus></div>'+
-      (kind==='advance'?'<div class="field"><label for="entryMode">Payment method</label><select class="inp" id="entryMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div>':'')+
-      (kind==='opening'?'<div class="field"><label for="entryDate">Opening date</label><input class="inp" id="entryDate" type="date" value="'+App.dayKey(Date.now())+'"></div>':'')+
-      '<div class="field"><label for="entryNote">Reason / note</label><input class="inp" id="entryNote"></div><p class="muted">'+(kind==='advance'?'This records money received and may create customer credit.':'This changes the balance without recording cash received or paid.')+'</p></div>');
-    App.modal({title:{advance:'Record advance',opening:'Opening balance',correction:'Correct customer balance'}[kind],body,buttons:[{label:t('com.cancel'),cls:'ghost'},{label:t('com.save'),cls:'pri',fn:async()=>{
+    const body=App.el('<div><p>'+esc(c.name)+' · '+esc(money(c.balance,true))+'</p><div class="field"><label for="entryAmount">'+(kind==='advance'?window.App.moneyLiteral('Amount received'):window.App.moneyLiteral('Signed amount: positive debt, negative credit'))+'</label><input class="inp" id="entryAmount" type="number" step="0.01" autofocus></div>'+
+      (kind==='advance'?window.App.moneyLiteral('<div class="field"><label for="entryMode">Payment method</label><select class="inp" id="entryMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div>'):'')+
+      (kind==='opening'?window.App.moneyLiteral('<div class="field"><label for="entryDate">Opening date</label><input class="inp" id="entryDate" type="date" value="')+App.dayKey(Date.now())+'"></div>':'')+
+      window.App.moneyLiteral('<div class="field"><label for="entryNote">Reason / note</label><input class="inp" id="entryNote"></div><p class="muted">')+(kind==='advance'?window.App.moneyLiteral('This records money received and may create customer credit.'):window.App.moneyLiteral('This changes the balance without recording cash received or paid.'))+'</p></div>');
+    App.modal({title:{advance:window.App.moneyLiteral('Record advance'),opening:window.App.moneyLiteral('Opening balance'),correction:window.App.moneyLiteral('Correct customer balance')}[kind],body,buttons:[{label:t('com.cancel'),cls:'ghost'},{label:t('com.save'),cls:'pri',fn:async()=>{
       const amount=Number(App.$('#entryAmount',body).value),note=App.$('#entryNote',body).value;
       if(kind==='advance')await App.actions.customerCredit(id,amount,App.$('#entryMode',body).value,note,{operationId});
       else if(kind==='opening')await App.actions.openingBalance(id,amount,new Date(App.$('#entryDate',body).value+'T00:00:00').getTime(),note,{operationId});
       else await App.actions.correctCustomerBalance(id,amount,note,{operationId});
-      App.toast('ok','Customer entry saved');App.render();
+      App.toast('ok',window.App.moneyLiteral('Customer entry saved'));App.render();
     }}]});
   };
 
@@ -106,8 +108,8 @@
       '<div class="field"><label>' + t('com.name') + ' *</label><input class="inp" id="c_n" value="' + esc(d.name) + '" placeholder="Ramesh Kumar" autofocus></div>' +
       '<div class="row"><div class="field"><label>' + t('com.phone') + '</label><input class="inp num" id="c_p" type="tel" inputmode="tel" value="' + esc(d.phone) + '" placeholder="98123 45670"></div>' +
       '<div class="field"><label> ' + t('cus.birthday') + ' <span class="muted">MM-DD</span></label><input class="inp" id="c_b" value="' + esc(d.birthday) + '" placeholder="08-14"></div></div>' +
-      '<div class="field"><label>Note</label><input class="inp" id="c_note" value="' + esc(d.note || '') + '" placeholder="Lives above the chemist"></div>' +
-      (c ? '<div class="alert info"><span class="ai"></span><span>' + t('cus.balance') + ': <b>' + money(c.balance, true) + '</b> · ★ ' + Math.floor(c.points || 0) + ' ' + t('cus.points') + '</span></div>' : '') +
+      window.App.moneyLiteral('<div class="field"><label>Note</label><input class="inp" id="c_note" value="') + esc(d.note || '') + '" placeholder="Lives above the chemist"></div>' +
+      (c ? '<div class="alert info"><span class="ai"></span><span>' + t('cus.balance') + ': <b>' + money(c.balance, true) + '</b> ·  ' + Math.floor(c.points || 0) + ' ' + t('cus.points') + '</span></div>' : '') +
       '</div>');
     App.modal({
       title: c ? '' + esc(c.name) : '' + t('cus.add'), body,
@@ -151,8 +153,8 @@
 
     const body = App.el('<div>' +
       '<div class="grid g-3" style="margin-bottom:16px">' +
-      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + (c.balance < 0 ? 'Credit owed to customer' : t('cus.balance')) + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(Math.abs(c.balance), true) + '</div>' +
-      (c.balance < 0 ? '<div class="d up">Available against future udhaar bills</div>' : days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
+      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + (c.balance < 0 ? window.App.moneyLiteral('Credit owed to customer') : t('cus.balance')) + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(Math.abs(c.balance), true) + '</div>' +
+      (c.balance < 0 ? window.App.moneyLiteral('<div class="d up">Available against future udhaar bills</div>') : days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
       '<div class="stat"><div class="k">' + t('cus.spent', { amt: '' }).trim() + '</div><div class="v">' + App.short(c.spend || 0) + '</div><div class="d muted">' + t('cus.visits', { n: c.visits || 0 }) + '</div></div>' +
       '<div class="stat"><div class="k">★ ' + t('cus.points') + '</div><div class="v">' + Math.floor(c.points || 0) + '</div><div class="d muted">= ' + money(Math.floor(c.points || 0) * (App.DB().settings.loyaltyValue || 1)) + '</div></div>' +
       '</div>' +
@@ -160,9 +162,9 @@
       (c.balance > 0 ? '<button class="btn ok" id="dPay"> ' + t('cus.logPayment') + '</button>' : '') +
       (c.phone && c.balance > 0 ? '<button class="btn" id="dRemind"> ' + t('cus.remind') + '</button>' : '') +
       '<button class="btn ghost" id="dEdit"> ' + t('com.edit') + '</button>' +
-      '<button class="btn ghost" id="dCsv"> ' + t('com.export') + '</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>' +
-      '<div class="btn-row"><button class="btn" id="dAdvance">Record advance</button>'+(App.isOwner()?'<button class="btn" id="dOpening">Opening balance</button><button class="btn" id="dCorrection">Correct balance</button>':'')+'</div>'+
-      '<div class="sec-title">Balance entries (latest 40; CSV includes all)</div><div class="table-wrap"><table><thead><tr><th>Date / entry</th><th>Change</th><th>Balance</th></tr></thead><tbody>'+statement.entries.slice(-40).map(e=>'<tr><td>'+esc(App.fmtDT(e.at)+' · '+e.kind)+'<br><small>'+esc(e.note || '')+'</small></td><td>'+esc(money(e.delta,true))+'</td><td>'+esc(money(e.balance,true))+'</td></tr>').join('')+'</tbody></table></div>'+
+      '<button class="btn ghost" id="dCsv"> ' + t('com.export') + window.App.moneyLiteral('</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>') +
+      window.App.moneyLiteral('<div class="btn-row"><button class="btn" id="dAdvance">Record advance</button>')+(App.isOwner()?window.App.moneyLiteral('<button class="btn" id="dOpening">Opening balance</button><button class="btn" id="dCorrection">Correct balance</button>'):'')+'</div>'+
+      window.App.moneyLiteral('<div class="sec-title">Balance entries (latest 40; CSV includes all)</div><div class="table-wrap"><table><thead><tr><th>Date / entry</th><th>Change</th><th>Balance</th></tr></thead><tbody>')+statement.entries.slice(-40).map(e=>'<tr><td>'+esc(App.fmtDT(e.at)+' · '+App.moneyCode(e.kind))+'<br><small>'+esc(e.note || '')+'</small></td><td>'+esc(money(e.delta,true))+'</td><td>'+esc(money(e.balance,true))+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="sec-title">' + t('cus.history') + '</div>' +
       (feed.length ? feed.slice(0, 40).map((f) => f.kind === 'bill' ?
         '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '' : '') + '</span>' +
@@ -172,7 +174,7 @@
         '<button class="btn xs ghost" data-rebill="' + f.b.id + '">' + App.icon('eye',16) + '</button></div>'
         :
         '<div class="list-row"><span class="rank" style="background:var(--ok-bg);color:var(--ok)"></span>' +
-        '<span style="flex:1"><b>Payment received</b><br><small class="muted">' + App.fmtDT(f.p.at) + ' · ' + esc(String(f.p.mode).toUpperCase()) + '</small></span>' +
+        window.App.moneyLiteral('<span style="flex:1"><b>Payment received</b><br><small class="muted">') + App.fmtDT(f.p.at) + ' · ' + esc(String(f.p.mode).toUpperCase()) + '</small></span>' +
         '<b class="num" style="color:var(--ok)">− ' + money(f.p.amount) + '</b></div>').join('')
         : App.emptyState('', 'No purchases yet', '')) +
       '</div>');
@@ -186,13 +188,13 @@
       const rb = e.target.closest('[data-rebill]');
       if (rb) { const b = App.DB().bills.find((x) => x.id === rb.dataset.rebill); if (b) App.showReceipt(b); return; }
       if (e.target.closest('#dStatementCsv')) {
-        const rows = [['Date','Entry','Reference','Change','Balance','Mode','Note']];
+        const rows = [[window.App.moneyLiteral('Date'),'Entry','Reference',window.App.moneyLiteral('Change'),window.App.moneyLiteral('Balance'),'Mode',window.App.moneyLiteral('Note')]];
         statement.entries.forEach(e=>rows.push([App.fmtDT(e.at),e.kind,e.billId || e.paymentId || e.id,e.delta,e.balance,e.mode || '',e.note || '']));
         App.download(App.toCSV(rows), 'balance-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
       }
       if(e.target.closest('#dCsv')){
-        const rows=[['Date','Type','Ref','Items','Amount','Mode']];
-        feed.forEach(f=>f.kind==='bill'?rows.push([App.fmtDT(f.b.at),f.b.void?'Cancelled':f.b.credit?'Udhaar':'Sale','#'+f.b.no,f.b.lines.map(l=>l.name+'×'+l.qty).join('; '),f.b.total,f.b.mode]):rows.push([App.fmtDT(f.p.at),f.p.kind==='advance'?'Advance':'Payment','','',-f.p.amount,f.p.mode]));
+        const rows=[[window.App.moneyLiteral('Date'),'Type','Ref',window.App.moneyLiteral('Items'),window.App.moneyLiteral('Amount'),'Mode']];
+        feed.forEach(f=>f.kind==='bill'?rows.push([App.fmtDT(f.b.at),f.b.void?window.App.moneyLiteral('Cancelled'):f.b.credit?'Udhaar':'Sale','#'+f.b.no,f.b.lines.map(l=>l.name+'×'+l.qty).join('; '),f.b.total,f.b.mode]):rows.push([App.fmtDT(f.p.at),f.p.kind==='advance'?window.App.moneyLiteral('Advance'):window.App.moneyLiteral('Payment'),'','',-f.p.amount,f.p.mode]));
         App.download(App.toCSV(rows),'ledger-'+c.name.replace(/\s+/g,'-')+'.csv','text/csv');
       }
     });
@@ -255,7 +257,7 @@
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.phone') + '</th><th class="r">Spent</th><th class="r">★</th><th class="r">Last seen</th><th></th></tr></thead><tbody>' +
       (rest.length ? rest.map((c, i) => '<tr>' +
-        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<div><b>' + esc(c.name) + '</b>' + (c.balance < 0 ? '<br><small>Credit owed: ' + money(-c.balance, true) + '</small>' : '') + '</div></div></td>' +
+        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<div><b>' + esc(c.name) + '</b>' + (c.balance < 0 ? window.App.moneyLiteral('<br><small>Credit owed: ') + money(-c.balance, true) + '</small>' : '') + '</div></div></td>' +
         '<td class="num muted">' + esc(c.phone || '—') + '</td>' +
         '<td class="r num">' + money(c.spend || 0) + '</td>' +
         '<td class="r num">' + Math.floor(c.points || 0) + '</td>' +
@@ -342,7 +344,7 @@
       sups.map((s) => '<option value="' + s.id + '" ' + (s.id === supplierId ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></div>' +
       '<div class="sec-title" style="margin-top:12px">Items received</div>' +
       '<div class="row" style="align-items:flex-end">' +
-      '<div class="field" style="flex:2"><label>Item</label><select class="inp" id="p_i">' +
+      window.App.moneyLiteral('<div class="field" style="flex:2"><label>Item</label><select class="inp" id="p_i">') +
       App.items().map((i) => '<option value="' + i.id + '">' + esc(App.itemName(i)) + '</option>').join('') + '</select></div>' +
       '<div class="field" style="flex:.7"><label>' + t('com.qty') + '</label><input class="inp num" id="p_q" type="number" inputmode="numeric" value="10"></div>' +
       '<div class="field" style="flex:.9"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="p_c" type="number" inputmode="decimal"></div>' +
@@ -350,7 +352,7 @@
       '<div class="field"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="p_e" type="date"></div>' +
       '<div id="p_list" style="margin:10px 0"></div>' +
       '<div class="kv" style="font-size:17px"><b>' + t('com.total') + '</b><b id="p_tot" class="num">₹0</b></div>' +
-      '<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div><div class="field"><label>Payment mode</label><select class="inp" id="p_mode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div></div>');
+      window.App.moneyLiteral('<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div><div class="field"><label>Payment mode</label><select class="inp" id="p_mode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div></div>'));
 
     const syncCost = () => {
       const it = App.item(App.$('#p_i', body).value);
@@ -442,10 +444,10 @@
 
       '<div class="sec-title"> ' + t('sup.history') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
-      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + '</th><th>Items</th><th class="r">' + t('com.total') + '</th><th class="r">Linked paid</th></tr></thead><tbody>' +
+      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + window.App.moneyLiteral('</th><th>Items</th><th class="r">') + t('com.total') + '</th><th class="r">Linked paid</th></tr></thead><tbody>' +
       (pos.length ? pos.map((p) => '<tr><td class="num">' + p.no + '</td><td class="muted" style="font-size:12.5px">' + App.fmtDT(p.at) + '</td>' +
         '<td><b>' + esc(p.supplierName) + '</b></td>' +
-        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (l.name || (it ? it.name : '?')) + '×' + l.qty; }).join(', ').slice(0, 52)) + (p.cancelled ? ' · Cancelled' : '') + '</td>' +
+        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (l.name || (it ? it.name : '?')) + '×' + l.qty; }).join(', ').slice(0, 52)) + (p.cancelled ? window.App.moneyLiteral(' · Cancelled') : '') + '</td>' +
         '<td class="r num"><b>' + money(p.total) + '</b></td>' +
         '<td class="r num" style="color:' + (App.purchasePaid(p) >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(App.purchasePaid(p)) + '</td></tr>').join('')
         : '<tr><td colspan="6">' + App.emptyState('', 'No purchases recorded', 'Log what you buy so stock updates itself') + '</td></tr>') +

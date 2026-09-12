@@ -21,9 +21,10 @@
     const body = App.el('<div>' +
       '<div class="field"><label>' + t('inv.emoji') + '</label><div class="chip-row" id="emoPick">' +
       EMOJI.map((e) => '<button class="chip tap ' + (d.emoji === e ? 'sel' : '') + '" data-e="' + e + '" style="font-size:16px">' + e + '</button>').join('') + '</div></div>' +
+      '<div class="row"><div class="field"><label>'+App.uiText('Selling unit')+'</label><select class="inp" id="i_unit" '+(it?'disabled':'')+'><option value="">'+App.uiText('Legacy unit (unchanged)')+'</option>'+App.units.names().map(u=>'<option value="'+u+'" '+(d.quantitySpec?.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select></div><div class="field"><label>'+App.uiText('Contents per pack')+'</label><input class="inp" id="i_packSize" type="number" step="any" '+(it?'disabled':'')+' value="'+esc(d.quantitySpec?.packSize || '')+'"></div><div class="field"><label>'+App.uiText('Pack contents unit')+'</label><select class="inp" id="i_packUnit" '+(it?'disabled':'')+'>'+App.units.names().filter(u=>u!=='pack').map(u=>'<option value="'+u+'" '+(d.quantitySpec?.packUnit===u?'selected':'')+'>'+u+'</option>').join('')+'</select></div></div>'+
       '<div class="field"><label>' + t('com.name') + ' *</label><input class="inp" id="i_name" value="' + esc(d.name) + '" placeholder="Lays Magic Masala" autofocus></div>' +
       '<div class="row"><div class="field"><label>हिंदी नाम <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="i_hi" value="' + esc(d.nameHi) + '" placeholder="लेज़ मैजिक मसाला"></div>' +
-      '<div class="field"><label> Voice aliases</label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
+      '<div class="field"><label> <span data-core-text="Voice aliases">Voice aliases</span></label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.price') + ' * ₹</label><input class="inp num" id="i_price" type="number" inputmode="decimal" step="0.5" value="' + esc(d.price) + '"></div>' +
       '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="i_cost" type="number" inputmode="decimal" step="0.5" value="' + esc(d.cost) + '"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it ? 'disabled title="Use Count / dispose to record stock changes"' : '') + '></div>' +
@@ -34,29 +35,30 @@
       [0, 5, 12, 18, 28].map((g) => '<option value="' + g + '" ' + (+d.gst === g ? 'selected' : '') + '>' + g + '%</option>').join('') + '</select></div></div>' +
       '<div class="field"><label>' + t('inv.barcode') + '</label><div class="row">' +
       '<input class="inp" id="i_bc" value="' + esc(d.barcode) + '" placeholder="8901491101837">' +
-      '<button class="btn" id="i_scan" style="flex:0 0 auto">' + App.icon('scan',16) + '</button></div></div>' +
+      '<button class="btn" id="i_scan" aria-label="' + esc(App.uiText('Scan barcode')) + '" style="flex:0 0 auto">' + App.icon('scan',16) + '</button></div></div>' +
       '<label class="switch"><input type="checkbox" id="i_fav" ' + (d.fav ? 'checked' : '') + '><span class="sw"></span>' +
       '<span><span class="lbl"> ' + t('inv.fav') + '</span></span></label>' +
       (it && it.batches && it.batches.length ? '<div class="sec-title">' + t('inv.batches') + '</div>' +
         it.batches.slice().sort((a, b) => (a.expiry || '9999') < (b.expiry || '9999') ? -1 : 1).map((b) =>
-          '<div class="kv"><span>' + (b.expiry ? '' + App.fmtD(new Date(b.expiry + 'T00:00')) : 'No expiry') + '</span><b>' + b.qty + '</b></div>').join('') : '') +
+          '<div class="kv"><span>' + (b.expiry ? ' ' + App.fmtD(new Date(b.expiry + 'T00:00')) : App.uiText('No expiry')) + '</span><b>' + b.qty + '</b></div>').join('') : '') +
       '</div>');
 
     App.modal({
       title: it ? '' + esc(it.name) : '' + t('inv.addItem'), body,
       buttons: [
-        it ? { label: 'Remove', cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
+        it ? { label: App.uiText('Delete item'), cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
           label: t('com.save'), cls: 'pri', fn: async () => {
             App.requirePermission('edit_inventory');
             const name = App.$('#i_name', body).value.trim();
             const price = parseFloat(App.$('#i_price', body).value);
-            if (!name) { App.toast('err', 'Name is required'); return false; }
-            if (!(price >= 0)) { App.toast('err', 'Price is required'); return false; }
+            if (!name) { App.toast('err', App.uiText('Name is required')); return false; }
+            if (!(price >= 0)) { App.toast('err', App.uiText('Price is required')); return false; }
             const stock = it ? null : parseFloat(App.$('#i_stock', body).value) || 0;
             if (stock !== null) App.domain.quantityUnits(stock);
             const rec = it || { id: App.uid('it'), storeId: App.S(), batches: [], at: Date.now() };
+            if(!it&&App.$('#i_unit',body).value){const unit=App.$('#i_unit',body).value;rec.unit=unit;rec.quantitySpec={version:1,unit,...(unit==='pack'?{packSize:Number(App.$('#i_packSize',body).value),packUnit:App.$('#i_packUnit',body).value}:{})};App.DB().quantityVersion=1;}
             rec.name = name;
             rec.nameHi = App.$('#i_hi', body).value.trim();
             rec.alias = App.$('#i_alias', body).value.trim();
@@ -84,7 +86,7 @@
       const em = e.target.closest('[data-e]');
       if (em) { d.emoji = em.dataset.e; App.$$('[data-e]', body).forEach((x) => x.classList.toggle('sel', x.dataset.e === d.emoji)); }
       if (e.target.closest('#i_scan')) {
-        App.prompt(t('inv.barcode'), 'Type or paste the barcode', { value: App.$('#i_bc', body).value })
+        App.prompt(t('inv.barcode'), App.uiText('Type or paste the barcode'), { value: App.$('#i_bc', body).value })
           .then((v) => { if (v != null) App.$('#i_bc', body).value = v.trim(); });
       }
     });

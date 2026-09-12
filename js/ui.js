@@ -84,7 +84,7 @@
   App.toast = function (kind, title, sub, action) {
     const root = $('#toastRoot');
     const node = el(
-      '<div class="toast ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : 'ok') + '">' +
+      '<div role="'+(kind==='err'?'alert':'status')+'" aria-atomic="true" class="toast ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : 'ok') + '">' +
       '<span class="ti">' + App.icon(ICON[kind] || ICON.ok, 16) + '</span>' +
       '<span class="tx"><b>' + esc(title) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
       (action ? '<button class="undo">' + esc(action.label) + '</button>' : '') + '</div>');
@@ -99,6 +99,7 @@
 
   /* ───────── modal ───────── */
   let openModals = 0;
+  App.hasOpenModal=()=>openModals>0;
   const modalClosers = new Set();
   App.on('secureclear', () => {
     for (const close of [...modalClosers]) close();
@@ -111,11 +112,12 @@
   });
   App.modal = function (opts) {
     const context = App.context();
+    const returnFocus=document.activeElement,titleId=App.uid('dialog_title');
     const back = el('<div class="modal-back"></div>');
-    const m = el('<div class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
+    const m = el('<div role="dialog" aria-modal="true" aria-labelledby="'+titleId+'" tabindex="-1" class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
     m.innerHTML =
-      '<div class="modal-head"><h3>' + esc(opts.title || '') + '</h3>' +
-      '<button class="icon-btn" data-x aria-label="Close">' + App.icon('x', 18) + '</button></div>' +
+      '<div class="modal-head"><h3 id="'+titleId+'">' + esc(opts.title || '') + '</h3>' +
+      '<button class="icon-btn" aria-label="'+esc(App.t('com.close'))+'" data-x>' + App.icon('x',18) + '</button></div>' +
       '<div class="modal-body"></div>' +
       (opts.foot === false ? '' : '<div class="modal-foot"></div>');
     back.appendChild(m);
@@ -132,8 +134,9 @@
       modalClosers.delete(forceClose);
       document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
-      setTimeout(() => { back.remove(); App.emit('modalclosed'); }, 240);
+      setTimeout(() => { back.remove(); App.emit('modalclosed');if(App.contextValid(context)){const target=returnFocus?.isConnected&&!returnFocus.closest('[hidden],[inert]')?returnFocus:document.querySelector('#modalRoot .modal:not(.out)')||document.querySelector('#main');if(target){if(target.id==='main')target.setAttribute('tabindex','-1');target.focus();}} }, 240);
       openModals--; if (!openModals) document.body.style.overflow = '';
+      const shell=$('#shell');if(shell)shell.inert=!!openModals||App.isLocked()||App.isSaving();
       if (opts.onClose) opts.onClose();
     }
     (opts.buttons || []).forEach((b) => {
@@ -142,6 +145,7 @@
       btn.onclick = async () => {
         if (busy || closed) return;
         btn.disabled = true;
+        const priorError=m.querySelector('.modal-error');if(priorError)priorError.remove();
         try {
           App.assertContext(context);
           // The callback may explicitly close its own modal after an awaited operation.
@@ -149,7 +153,7 @@
           if (result && typeof result.then === 'function') { busy = true; result = await result; busy = false; }
           if (result === false) return;
           if (b.keepOpen !== true) close();
-        } catch (e) { App.reportError(e); }
+        } catch (e) { let error=m.querySelector('.modal-error');if(!error){error=el('<p class="auth-err modal-error" role="alert" tabindex="-1"></p>');body.appendChild(error);}error.textContent=App.uiText(e.message || 'Something went wrong');error.focus(); }
         finally { busy = false; btn.disabled = false; }
       };
       foot && foot.appendChild(btn);
@@ -158,11 +162,13 @@
     back.addEventListener('mousedown', (e) => { if (e.target === back && opts.dismissable !== false) close(); });
     function onk(e) {
       if (e.key === 'Escape' && $('#modalRoot').lastElementChild === back) close();
+      if(e.key==='Tab'&&$('#modalRoot').lastElementChild===back){const nodes=[...m.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex="0"]')].filter(n=>!n.closest('[hidden]')&&n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(!first){e.preventDefault();m.focus();}else if(e.shiftKey&&(document.activeElement===first||!m.contains(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!m.contains(document.activeElement))){e.preventDefault();first.focus();}}
     }
     document.addEventListener('keydown', onk);
     $('#modalRoot').appendChild(back);
     openModals++; document.body.style.overflow = 'hidden';
-    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (!closed && f && w.innerWidth > 860) f.focus(); }, 120);
+    if($('#shell'))$('#shell').inert=true;App.enhanceAccessibility(m);
+    setTimeout(() => { const f = m.querySelector('[autofocus]') || m.querySelector('input:not([disabled]),select:not([disabled]),button:not([disabled])') || m; if (!closed&&$('#modalRoot').lastElementChild===back&&!m.contains(document.activeElement)) f.focus(); }, 120);
     if (opts.onReady) opts.onReady(api);
     return api;
   };
@@ -359,7 +365,7 @@
     const receiptMoney=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     const dpr = 2, W = 400;
     const lineH = 26, headH = 178, footH = 210 + (st.upiId ? 190 : 0);
-    const H = headH + bill.lines.length * lineH + footH;
+    const H = headH + bill.lines.reduce((n,l)=>n+lineH+(l.quantitySpec?16:0),0) + footH;
     const cv = document.createElement('canvas');
     cv.width = W * dpr; cv.height = H * dpr;
     const c = cv.getContext('2d'); c.scale(dpr, dpr);
@@ -403,6 +409,7 @@
       c.textAlign = 'right'; c.fillText(String(l.price), 312, y);
       c.fillStyle = '#1a1a1a'; c.font = F(13, 700);
       c.fillText(receiptMoney(l.gross), W - 18, y);
+      if(l.quantitySpec){c.textAlign='left';c.font=F(10,400);c.fillText(App.units.label(l),18,y+15);y+=16;}
       y += lineH;
     });
 
@@ -445,9 +452,9 @@
     const st = bill.receiptSettings || App.DB().settings;
     const money=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     let s = '*' + (st.shopName || 'My Shop') + '*\n';
-    s += 'Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
-    s += '' + bill.customerName + '\n\n';
-    bill.lines.forEach((l) => { s += '• ' + l.name + '  ×' + l.qty + '  —  ' + money(l.gross) + '\n'; });
+    s += ' Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
+    s += ' ' + bill.customerName + '\n\n';
+    bill.lines.forEach((l) => { s += '• ' + l.name + '  ×' + l.qty + (l.quantitySpec?' '+App.units.label(l):'') + '  —  ' + money(l.gross) + '\n'; });
     s += '\n';
     if (bill.discount > 0) s += 'Discount: −' + money(bill.discount) + '\n';
     if (bill.tax > 0) s += 'GST: ' + money(bill.tax) + '\n';
@@ -531,22 +538,25 @@
     const body = el('<div style="text-align:center">' +
       (opts.sub ? '<p class="muted" style="font-size:13px;margin-bottom:10px">' + esc(opts.sub) + '</p>' : '') +
       (opts.extra || '') +
-      '<div id="npv" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
+      '<div class="field"><label for="npInput">'+App.uiText('Amount')+'</label><input id="npInput" class="inp num" inputmode="decimal" autocomplete="off" autofocus></div>'+
+      '<div id="npv" aria-hidden="true" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
       (opts.quick ? '<div class="chip-row" style="justify-content:center;margin-bottom:12px">' +
         opts.quick.map((q) => '<button class="chip tap" data-q="' + q + '">' + money(q) + '</button>').join('') + '</div>' : '') +
       '<div class="pin-pad" style="grid-template-columns:repeat(3,1fr);justify-content:center">' +
       [1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, '⌫'].map((k) => '<button data-k="' + k + '">' + k + '</button>').join('') +
       '</div></div>');
     let val = initial ? String(initial) : '';
-    const paint = () => { $('#npv', body).textContent = '₹' + (val || '0'); };
+    const paint = () => { $('#npv', body).textContent = '₹' + (val || '0');$('#npInput',body).value=val; };
     paint();
     const m = App.modal({
       title, body,
       buttons: [{ label: App.t('com.cancel'), cls: 'ghost' }, {
         label: opts.ok || App.t('com.confirm'), cls: 'ok',
-        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n,body); }
+        fn: async () => {if(!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(val)||val.length>12)throw Error(App.uiText('Enter a valid amount with up to two decimal places.'));const n=Number(val);if(n<=0&&!opts.allowZero)throw Error(App.uiText('Enter an amount greater than zero.'));return await onOk(n,body); }
       }]
     });
+    $('#npInput',body).addEventListener('input',e=>{val=e.target.value;$('#npv',body).textContent='₹'+(val||'0');});
+    $('[data-k="⌫"]',body).setAttribute('aria-label',App.uiText('Delete last digit'));
     body.addEventListener('click', (e) => {
       const q = e.target.closest('[data-q]'), k = e.target.closest('[data-k]');
       if (q) { val = String(q.dataset.q); paint(); App.buzz(); return; }

@@ -412,9 +412,12 @@
       ],
       "recovery": "Define store timezone and late-entry policy; reopen/correct via an auditable operation rather than rewriting a closed shift.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "evidence": [
+        "reports/BUILD-11.md",
+        "reports/VERIFY-11.md"
+      ],
+      "codeCommit": "5275d14ec89de37f5bd78c10da360dd5ff5b24eb"
     },
     {
       "number": 12,
@@ -448,9 +451,12 @@
       ],
       "recovery": "Do not mark an unexplained difference as rounding noise; quantify and trace every discrepancy. This sprint ends with a cumulative shop-day verification.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "codeCommit": "9b46e78aa0d277ae72a3417d6f4165d299110c6f",
+      "evidence": [
+        "reports/BUILD-12.md",
+        "reports/VERIFY-12.md"
+      ]
     },
     {
       "number": 13,
@@ -460,7 +466,7 @@
       "title": "Hindi and accessible core navigation",
       "why": "The primary counter should work without essential English labels or pointer-only controls.",
       "scope": "Complete shell, login, lock, catalogue and checkout messages in English/Hindi; associate labels; provide modal focus handling, keyboard navigation, announcements and large-touch controls.",
-      "acceptance": "Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable.",
+      "acceptance": "Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable. Exercise actual local sign-up/confirmation/duplicate-name forms, retained existing shop and sign-out/sign-in; label device-only accounts clearly.",
       "exclusions": "New languages and translating the entire money/report workflow in this slice.",
       "areas": [
         "js/i18n.js",
@@ -483,9 +489,12 @@
       ],
       "recovery": "No framework rewrite; add a visible-string/locale inventory and check missing keys. Native-speaker acceptance is recorded separately from automated checks.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "codeCommit": "bb7bee0087bf23166329d4d37e5f61dccc15012c",
+      "evidence": [
+        "reports/BUILD-13.md",
+        "reports/VERIFY-13.md"
+      ]
     },
     {
       "number": 14,
@@ -520,9 +529,12 @@
       ],
       "recovery": "Preserve financial meaning across translations; maintain tested key parity and untranslated-string exceptions with owners.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "codeCommit": "819b7724a915a90c0bd82bb9558f8d23d461142c",
+      "evidence": [
+        "reports/BUILD-14.md",
+        "reports/VERIFY-14.md"
+      ]
     },
     {
       "number": 15,
@@ -556,9 +568,12 @@
       ],
       "recovery": "Typed fixtures can ship first; actual recorded-audio and target-phone evidence is a separate required gate before an accuracy claim.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "codeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "evidence": [
+        "reports/BUILD-15.md",
+        "reports/VERIFY-15.md"
+      ]
     },
     {
       "number": 16,
@@ -591,9 +606,12 @@
       ],
       "recovery": "Keep existing print/export fallback; publish dimensions and rendered samples, with simulated output clearly labelled.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "passed",
+      "codeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "evidence": [
+        "reports/BUILD-16.md",
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "number": 17,
@@ -625,9 +643,12 @@
       ],
       "recovery": "If hardware is unavailable, push code/report as blocked and keep support disabled; a screenshot or mock cannot close VERIFY-17.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "blocked",
+      "codeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "number": 18,
@@ -666,9 +687,12 @@
       ],
       "recovery": "Code completion and field acceptance are separate statuses; missing device/printer/participant evidence keeps the pilot release blocked.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "blocked",
+      "codeCommit": "89d0e62274b5892f4141a84c5ea1953f4dcb896b",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "number": 19,
@@ -677,8 +701,8 @@
       "phase": "Cloud",
       "title": "Local backend identity and store authorization",
       "why": "Cloud data must have a trusted identity boundary before any synchronization writes.",
-      "scope": "Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side.",
-      "acceptance": "Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data.",
+      "scope": "Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side. Integrate provider-backed email/password sign-up, verification, sign-in/out, session renewal and password reset with application forms and a local mail sink; explicit offline-shop linking preserves existing records.",
+      "acceptance": "Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data. Real browser/provider registration, verification, session and reset journeys; reject duplicate accounts and invalid/expired/reused links without changing the offline book.",
       "exclusions": "Creating paid/live resources or uploading local customer records.",
       "areas": [
         "new backend migrations/API",

@@ -1,0 +1,11 @@
+{
+ "provenance":"Synthetic typed utterances authored for deterministic parser verification. No recorded audio, people, consent records or recognition-accuracy evidence are implied.",
+ "cases":[
+  ["250 g sugar","sugar",0.25], ["0.25 kg sugar","sugar",0.25], ["२५० ग्राम चीनी","sugar",0.25], ["आधा किलो चीनी","sugar",0.5],
+  ["1.5 kilo sugar","sugar",1.5], ["250g sugar","sugar",0.25], ["two packets biscuits","biscuits",2], ["500 g biscuits","biscuits",2],
+  ["250 g biscuits","biscuits",1], ["125 g biscuits",null,null], ["half piece soap",null,null], ["2 pieces soap","soap",2],
+  ["250 ml milk","milk",0.25], ["0.25 l milk","milk",0.25], ["250 g milk",null,null], ["kg sugar",null,null],
+  ["-2 kg sugar",null,null], ["one two sugar",null,null], ["0.00001 kg sugar",null,null], ["500 sugar","sugar",500],
+  ["one magic unicorn",null,null], ["two peace soap",null,null], ["milk", "milk",1], ["zero kg sugar",null,null]
+ ]
+}

@@ -1,6 +1,6 @@
 # VERIFY-12 — Verify statements and reconciliation reports
 
-Status: **planned**. Build under review: [BUILD-12](BUILD-12.md).
+Status: **passed**. Build under review: [BUILD-12](BUILD-12.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

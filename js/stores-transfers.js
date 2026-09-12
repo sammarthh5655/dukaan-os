@@ -27,9 +27,10 @@
  A.transfers=()=> (A.DB().stockTransfers || []).filter(t=>t.fromStoreId===A.S()||t.toStoreId===A.S());
  A.transferRemaining=(t,line)=>D.quantity(line.qty-(A.DB().transferReceipts || []).filter(r=>r.transferId===t.id).flatMap(r=>r.lines).filter(l=>l.lineId===line.lineId).reduce((n,l)=>n+l.qty,0));
  A.inTransit=()=>A.transfers().map(t=>({...t,remaining:t.lines.map(l=>({...l,remaining:A.transferRemaining(t,l)}))}));
- A.actions.sendTransfer=async function({toStoreId,lines,note,operationId=A.uid('transfer')}={}){
+  A.actions.sendTransfer=async function({toStoreId,lines,note,operationId=A.uid('transfer')}={}){
   A.requirePermission('edit_inventory');if(toStoreId===A.S()||!A.canStore(toStoreId))throw new Error('Select another accessible destination store.');
   if(!Array.isArray(lines)||!lines.length||typeof note!=='string'||note.trim().length<3)throw new Error('Select goods and describe the transfer.');
+  for(const l of lines){const it=A.item(l.itemId);if(it)A.units.assertQuantity(it,l.qty);}
   const request={fromStoreId:A.S(),toStoreId,lines:JSON.parse(JSON.stringify(lines)),note:note.trim()};A.checkDataBounds(request);
   const previous=(A.DB().stockTransfers || []).find(t=>t.id===operationId);if(previous){if(JSON.stringify(previous.request)!==JSON.stringify(request))throw new Error('Transfer ID reused with different contents.');return D.snapshot(previous);}
   const staged=JSON.parse(JSON.stringify(A.DB().items)),seen=new Set(),quoted=[];
@@ -37,7 +38,7 @@
    const item=staged.find(i=>i.id===input.itemId&&i.storeId===A.S()&&!i.deleted);if(!item||seen.has(item.id))throw new Error('Transfer source item is missing or repeated.');seen.add(item.id);A.number(input.qty,'Transfer quantity',0.0001);D.quantityUnits(input.qty);
    let target=input.targetItemId&&staged.find(i=>i.id===input.targetItemId&&i.storeId===toStoreId&&!i.deleted);
    if(input.targetItemId&&!target)throw new Error('Destination item is not in that store.');
-   if(target&&(target.unit || 'unit')!==(item.unit || 'unit'))throw new Error('Destination item must use the same unit.');
+   if(target&&((target.unit || 'unit')!==(item.unit || 'unit')||!A.units.compatible(target,item)))throw new Error('Destination item must use the same unit.');
    if(!target){target={...JSON.parse(JSON.stringify(item)),id:A.uid('it'),storeId:toStoreId,stock:0,batches:[],at:Date.now()};delete target.lastBuyAt;staged.push(target);}
    const allocations=A.takeStock(item,input.qty);quoted.push({lineId:A.uid('transfer_line'),itemId:item.id,targetItemId:target.id,name:A.itemName(item),unit:item.unit || 'unit',qty:input.qty,allocations});
   }

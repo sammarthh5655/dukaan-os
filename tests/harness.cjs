@@ -14,6 +14,7 @@ async function create(shared, options = {}) {
       classList:{add(){},remove(){},toggle(){}}, addEventListener(ev,fn){this[ev]=fn;},
       querySelector(sel){return node(key+sel);}, querySelectorAll(){return [];},
       getContext(){return new Proxy({}, {get:(o,k)=>o[k]||(()=>{})});},
+      attributes:{},setAttribute(k,v){this.attributes[k]=String(v);},getAttribute(k){return this.attributes[k]??null;},hasAttribute(k){return k in this.attributes;},
       appendChild(n){this.children.push(n);}, focus(){}, getBoundingClientRect(){return {left:0,top:0,width:100,height:30};}
     });
     return nodes.get(key);
@@ -29,7 +30,7 @@ async function create(shared, options = {}) {
   };
   ctx.window=ctx; vm.createContext(ctx);
   const load=(f)=>vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),ctx,{filename:f});
-  ['js/domain.js','js/storage.js','js/indexeddb.js','js/core.js','js/safety.js','js/migrations.js','js/i18n.js','js/auth.js','js/backup.js','js/returns.js','js/supplier-corrections.js', 'js/stock-adjustments.js', 'js/stores-transfers.js','js/voice.js','js/qr.js','js/ui.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
+  ['js/domain.js','js/storage.js','js/indexeddb.js','js/core.js','js/safety.js','js/migrations.js','js/i18n.js','js/core-accessibility.js','js/money-language.js','js/quantity-units.js','js/auth.js','js/backup.js','js/returns.js','js/supplier-corrections.js', 'js/stock-adjustments.js', 'js/stores-transfers.js', 'js/cash-shifts.js', 'js/statements.js','js/voice.js','js/qr.js','js/ui.js','js/thermal-receipts.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
   const A=ctx.App; if (await A.acquireWriter()) { if (!options.noBoot) (await A.boot('audit')); }
   A.toast=()=>{}; A.buzz=()=>{}; A.bump=()=>{}; A.confetti=()=>{};
   A.$=node; A.$$=()=>[]; A.render=()=>{};

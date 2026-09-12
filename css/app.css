@@ -145,6 +145,13 @@ p{margin:0}
 .btn.big{height:50px;padding:0 22px;font-size:16px}
 .btn:disabled{opacity:.4;pointer-events:none}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:pre;border:0}
+.topbar .net-pill{min-width:0;max-width:220px}.topbar .net-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.modal :focus-visible{scroll-margin-block:20px}
+.qty button,.auth-tab,.icon-btn{min-width:44px;min-height:44px}
+.auth-card{max-height:calc(100dvh - 32px);overflow:auto}
+@media(max-width:860px){input,select,textarea{font-size:16px}.modal .row{flex-wrap:wrap}.modal .field{min-width:0;flex:1 1 180px}}
 
 .chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border-radius:99px;font-size:13.5px;font-weight:500;background:var(--surface-3);color:var(--ink-2);border:1px solid transparent}
 .chip.ok{background:var(--ok-bg);color:var(--ok)}

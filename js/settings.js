@@ -11,12 +11,12 @@
   async function exportAll() {
     const context = App.context();
     if (!await App.auth.verifyOwner()) return;
-    const password = await App.prompt('Encrypt backup', 'Choose a backup password (12–256 characters)', {
-      type: 'password', hint: 'Keep this password separately. A forgotten backup password cannot be recovered.' });
+    const password = await App.prompt(window.App.moneyLiteral('Encrypt backup'), window.App.moneyLiteral('Choose a backup password (12–256 characters)'), {
+      type: 'password', hint: window.App.moneyLiteral('Keep this password separately. A forgotten backup password cannot be recovered.') });
     if (password == null) return;
-    const confirm = await App.prompt('Confirm backup password', 'Enter the backup password again', { type: 'password' });
+    const confirm = await App.prompt(window.App.moneyLiteral('Confirm backup password'), window.App.moneyLiteral('Enter the backup password again'), { type: 'password' });
     if (confirm == null) return;
-    if (password !== confirm) throw new Error('Backup passwords do not match.');
+    if (password !== confirm) throw new Error(window.App.moneyLiteral('Backup passwords do not match.'));
     App.assertContext(context); App.auth.requireFresh();
     const encrypted = await App.backups.encrypt(App.backups.capture(), password);
     App.assertContext(context); App.auth.requireFresh();
@@ -24,18 +24,18 @@
     App.DB().settings.lastBackup = Date.now();
     App.log('sys', 'Encrypted backup exported');
     (await App.save({ sync: false, render: false }));
-    App.toast('ok', 'Encrypted backup saved', 'Keep the file and its password safe. Staff PINs are not included.');
+    App.toast('ok', window.App.moneyLiteral('Encrypted backup saved'), window.App.moneyLiteral('Keep the file and its password safe. Staff PINs are not included.'));
   }
 
   async function exportLedgerCSV() {
     const context = App.context();
     if (!await App.auth.verifyOwner()) return;
     App.assertContext(context); App.auth.requireFresh();
-    if (!await App.confirm('Export readable customer data?', 'This CSV contains names, phone numbers and balances. Anyone with the file can read it.')) return;
+    if (!await App.confirm(window.App.moneyLiteral('Export readable customer data?'), window.App.moneyLiteral('This CSV contains names, phone numbers and balances. Anyone with the file can read it.'))) return;
     App.assertContext(context); App.auth.requireFresh();
-    const rows = [['Type', 'Name', 'Phone', 'Pending', 'Points', 'Visits', 'Total spent', 'Due since (days)']];
-    App.customers().forEach(c => rows.push(['Customer', c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0), c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
-    App.suppliers().forEach(s => rows.push(['Supplier', s.name, s.phone || '', -(s.balance || 0), '', '', '', s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
+    const rows = [['Type', 'Name', 'Phone', window.App.moneyLiteral('Pending'), 'Points', 'Visits', 'Total spent', 'Due since (days)']];
+    App.customers().forEach(c => rows.push([window.App.moneyLiteral('Customer'), c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0), c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
+    App.suppliers().forEach(s => rows.push([window.App.moneyLiteral('Supplier'), s.name, s.phone || '', -(s.balance || 0), '', '', '', s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
     App.download(App.toCSV(rows), 'dukaan-ledger-' + App.dayKey(Date.now()) + '.csv', 'text/csv');
     App.log('sys', 'Ledger CSV exported'); (await App.save({ sync: false }));
   }
@@ -46,24 +46,24 @@
     const raw = await file.text();
     App.assertContext(context);
     let p;
-    try { p = JSON.parse(raw); } catch (e) { throw new Error('Not a valid backup file.'); }
+    try { p = JSON.parse(raw); } catch (e) { throw new Error(window.App.moneyLiteral('Not a valid backup file.')); }
     let data;
     if (p && p.format === 'encrypted') {
-      const password = await App.prompt('Open encrypted backup', 'Enter the backup password', { type: 'password' });
+      const password = await App.prompt(window.App.moneyLiteral('Open encrypted backup'), window.App.moneyLiteral('Enter the backup password'), { type: 'password' });
       if (password == null) return;
       data = await App.backups.decrypt(p, password);
     } else {
-      if (p && p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error('Unsupported backup format.');
+      if (p && p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error(window.App.moneyLiteral('Unsupported backup format.'));
       data = App.backups.validatePayload(p && p.data ? p.data : p);
     }
     App.assertContext(context);
     const book = App.backups.businessData(data);
-    if (!await App.confirm('Restore business records?', 'Replace this shop’s records with ' + book.items.length + ' items, ' + book.bills.length + ' bills and ' + book.customers.length +
-      ' customers? Your current staff, PINs and UPI payment address will be kept. Check the backup date and totals: an old backup rolls the books back.', { danger: true, ok: 'Restore' })) return;
+    if (!await App.confirm(window.App.moneyLiteral('Restore business records?'), window.App.moneyLiteral('Replace this shop’s records with ') + book.items.length + window.App.moneyLiteral(' items, ') + book.bills.length + window.App.moneyLiteral(' bills and ') + book.customers.length +
+      window.App.moneyLiteral(' customers? Your current staff, PINs and UPI payment address will be kept. Check the backup date and totals: an old backup rolls the books back.'), { danger: true, ok: window.App.moneyLiteral('Restore') })) return;
     if (!await App.auth.verifyOwner()) return;
     App.assertContext(context); (await App.restoreBackup(data));
     App.log('sys', 'Business records restored; current access and payment settings retained'); (await App.save({ sync: false }));
-    App.toast('ok', 'Restored', 'Reloading…');
+    App.toast('ok', window.App.moneyLiteral('Restored'), window.App.moneyLiteral('Reloading…'));
     setTimeout(() => location.reload(), 700);
   }
 
@@ -119,7 +119,7 @@
         {
           label: t('com.save'), cls: 'pri', fn: async () => {
             const n = App.$('#st_n', body).value.trim();
-            if (!n) { App.toast('err', 'Name is required'); return false; }
+            if (!n) { App.toast('err', App.uiText('Name is required')); return false; }
             App.requirePermission('settings');
             App.assertContext(context); App.auth.requireFresh();
             const role = App.$('#st_r', body).value, pin = App.$('#st_p', body).value.trim();
@@ -289,8 +289,8 @@
           '<p class="muted" style="font-size:11.5px;margin-top:6px">Permanently removes your login and every bill, item and customer. Cannot be undone.</p>' : '')
         :
         '<div class="alert info"><span class="ai"></span><span>The app opens straight to your counter — no login needed.</span></div>' +
-        '<button class="btn pri block" id="gateOn" style="margin-top:12px"> Turn on login</button>' +
-        '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, to discourage casual access. Records remain unencrypted on this device; someone controlling its browser storage can bypass the login. Existing records are carried over.</p>'
+        '<button class="btn pri block" id="gateOn" style="margin-top:12px"> <span data-core-text="Turn on login">Turn on login</span></button>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:6px"><span data-core-text="A local login discourages casual access. Records remain unencrypted on this device; someone controlling browser storage can bypass it."></span><br><span data-core-text="This account works only in this browser. Online sign-in and password recovery are not available yet."></span></p>'
       ) +
       '</div>' +
 
@@ -298,17 +298,17 @@
       '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('set.backup') + '</div>' +
       '<div class="alert ' + (st.lastBackup && Date.now() - st.lastBackup < 7 * App.DAY ? 'ok' : 'warn') + '"><span class="ai">' +
       (st.lastBackup ? '' : '') + '</span><span>' +
-      (st.lastBackup ? 'Last backup ' + App.timeAgo(st.lastBackup) : 'You have never taken a backup. Export an encrypted copy and keep its password safe.') + '</span></div>' +
+      (st.lastBackup ? window.App.moneyLiteral('Last backup ') + App.timeAgo(st.lastBackup) : window.App.moneyLiteral('You have never taken a backup. Export an encrypted copy and keep its password safe.')) + '</span></div>' +
       '<div class="btn-row" style="margin-top:12px">' +
       '<button class="btn pri" id="expAll"> ' + t('set.exportAll') + '</button>' +
-      '<button class="btn" id="expLed"> Ledger CSV</button></div>' +
+      window.App.moneyLiteral('<button class="btn" id="expLed"> Ledger CSV</button></div>') +
       '<div class="field" style="margin-top:14px"><label>' + t('set.importData') + '</label>' +
       '<input class="inp" type="file" id="impFile" accept=".json,application/json"></div>' +
       '<div class="alert info"><span class="ai"></span><span>' + t('sync.offlineHint') + '</span></div>' +
-      '<div class="kv"><span>Bills stored</span><b class="num">' + db.bills.length + '</b></div>' +
-      '<div class="kv"><span>Items</span><b class="num">' + db.items.filter((i) => !i.deleted).length + '</b></div>' +
-      '<div class="kv"><span>Customers</span><b class="num">' + db.customers.filter((c) => !c.deleted).length + '</b></div>' +
-      '<div class="kv"><span>Cloud sync unavailable; legacy queued changes</span><b class="num">' + App.sync.pending() + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Bills stored</span><b class="num">') + db.bills.length + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Items</span><b class="num">') + db.items.filter((i) => !i.deleted).length + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Customers</span><b class="num">') + db.customers.filter((c) => !c.deleted).length + '</b></div>' +
+      window.App.moneyLiteral('<div class="kv"><span>Cloud sync unavailable; legacy queued changes</span><b class="num">') + App.sync.pending() + '</b></div>' +
       (isBlank ? '<button class="btn sm block" id="loadSample" style="margin-top:14px"> Load sample data</button>' +
         '<p class="muted" style="font-size:11.5px;margin-top:6px">Optional demo shop to explore with. Only offered while your shop is still empty — nothing is ever added on its own.</p>' : '') +
       (owner ? '<button class="btn danger block" id="resetAll" style="margin-top:16px"> ' + t('set.reset') + '</button>' : '') +
@@ -390,17 +390,16 @@
       if (e.target.closest('#doLogout')) return App.logout && App.logout();
       if (e.target.closest('#gateOn')) {
         const body = App.el('<div>' +
-          '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px">Create the owner login for <b>' + esc(st.shopName) + '</b>. Your ' +
-          db.bills.length + ' bills and ' + db.items.filter((i) => !i.deleted).length + ' items come with you.</p>' +
-          '<div class="field"><label>Username</label><input class="inp" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
-          '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="12 to 256 characters"></div>' +
-          '<div class="field"><label>Confirm password</label><input class="inp" id="g_pass2" type="password"></div>' +
-          '<div class="alert warn"><span class="ai"></span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
+          '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px"><span data-core-text="Your existing bills and items will be kept."></span><br><b>' + esc(st.shopName) + '</b></p>' +
+          '<div class="field"><label data-core-text="Username">Username</label><input class="inp" autocomplete="username" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
+          '<div class="field"><label data-core-text="Password">Password</label><input class="inp" id="g_pass" autocomplete="new-password" type="password" placeholder="12 to 256 characters"></div>' +
+          '<div class="field"><label data-core-text="Confirm password">Confirm password</label><input class="inp" id="g_pass2" autocomplete="new-password" type="password"></div>' +
+          '<div class="alert warn"><span class="ai"></span><span><span data-core-text="This account works only in this browser. Online sign-in and password recovery are not available yet."></span></span></div>' +
           '<p class="auth-err" id="g_err"></p></div>');
         App.modal({
-          title: 'Turn on login', body,
+          title: ' '+App.uiText('Turn on login'), body,
           buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-            label: 'Create login', cls: 'pri', keepOpen: true, fn: async (api) => {
+            label: App.uiText('Create login'), cls: 'pri', keepOpen: true, fn: async (api) => {
               const errEl = App.$('#g_err', body);
               errEl.textContent = '';
               try {
@@ -410,9 +409,9 @@
                 });
                 (await App.auth.enableGate(acc.id));
                 api.close();
-                App.toast('ok', 'Login turned on', 'You will sign in as @' + acc.username + ' from now on.');
+                App.toast('ok', App.uiText('Login turned on'), 'You will sign in as @' + acc.username + ' from now on.');
                 setTimeout(() => location.reload(), 800);
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); errEl.focus(); }
             }
           }]
         });
@@ -453,7 +452,7 @@
                 await App.auth.changePassword(acc.id, App.$('#cp_old', body).value, n1);
                 App.toast('ok', 'Password changed');
                 api.close();
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); }
             }
           }]
         });
@@ -476,7 +475,7 @@
                 api.close();
                 App.toast('ok', 'Account deleted');
                 setTimeout(() => location.reload(), 500);
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); }
             }
           }]
         });

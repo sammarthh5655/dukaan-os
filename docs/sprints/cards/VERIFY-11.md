@@ -1,6 +1,6 @@
 # VERIFY-11 — Verify cash shifts, expenses and closing
 
-Status: **planned**. Build under review: [BUILD-11](BUILD-11.md).
+Status: **passed**. Build under review: [BUILD-11](BUILD-11.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

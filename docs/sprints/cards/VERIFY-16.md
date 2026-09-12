@@ -1,6 +1,6 @@
 # VERIFY-16 — Verify 58 mm receipt layouts
 
-Status: **planned**. Build under review: [BUILD-16](BUILD-16.md).
+Status: **passed**. Build under review: [BUILD-16](BUILD-16.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
